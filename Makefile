@@ -35,7 +35,7 @@ common_objs = $(foreach src,$(common_src),$(subst .c,.o,$(src)))
 shared_src = rcall.c rconversions.c rlogging.c
 
 .PHONY: default
-default: clean all
+default: clean-clients all
 
 .PHONY: clean_common
 clean_common:
@@ -63,7 +63,7 @@ debug: client
 all: CUSTOMFLAGS = -O3
 all: client
 
-clean: clean_common
+clean-clients: clean_common
 	rm -f *.o
 	rm -f client
 	rm -f bin/client
