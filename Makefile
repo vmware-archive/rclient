@@ -33,6 +33,8 @@ common_src = $(shell find $(PLCONTAINER_DIR)/common -name "*.c")
 common_objs = $(foreach src,$(common_src),$(subst .c,.o,$(src)))
 shared_src = rcall.c rconversions.c rlogging.c
 
+CLIENT=rclient
+
 .PHONY: default
 default: clean all
 
@@ -51,8 +53,8 @@ librcall.so: $(shared_src)
 	cp librcall.so bin
 
 client: client.o librcall.so $(common_objs)
-	$(CC) -o $@ $^ $(R_LDLAGS)
-	cp client bin
+	$(CC) -o $(CLIENT) $^ $(R_LDLAGS)
+	cp $(CLIENT) bin
 
 .PHONY: debug
 debug: CUSTOMFLAGS = -D_DEBUG_CLIENT -g -O0
@@ -64,7 +66,7 @@ all: client
 
 clean: clean_common
 	rm -f *.o
-	rm -f client
-	rm -f bin/client
+	rm -f $(CLIENT)
+	rm -f bin/$(CLIENT)
 
 endif # R_HOME check
