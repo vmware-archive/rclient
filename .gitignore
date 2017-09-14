@@ -1,5 +1,5 @@
-/client
+/rclient
 /*.so
-/bin/client
+/bin/rclient
 /bin/*.so
 *.o
