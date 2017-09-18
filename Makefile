@@ -8,7 +8,7 @@
 ifeq (,${R_HOME})
 #R_HOME is not defined
 
-default: 
+default all clean client debug clean_common librcall.so:
 	@echo ""; \
 	 echo "*** Cannot build PL/Container R client because R_HOME cannot be found." ; \
 	 echo "*** Refer to the documentation for details."; \
