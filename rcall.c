@@ -118,24 +118,33 @@ char *last_R_error_msg,
 plcConn* plcconn_global;
 
 void r_init( ) {
-    char   *argv[] = {"client", "--slave", "--vanilla"};
-    char   *    buf;
+    char   *rargv[] = {"rclient", "--slave", "--silent", "--no-save", "--no-restore"};
+    char   *buf;
+	char   *r_home;
+	int     rargc;
 
+	r_home = getenv("R_HOME");
     /*
      * Stop R using its own signal handlers Otherwise, R will prompt the user for what to do and
          will hang in the container
     */
     R_SignalHandlers = 0;
+	if (r_home == NULL){
+		lprintf(ERROR, "R_HOME is not set, please check and set the R_HOME");
+	}
 
-    if( !Rf_initEmbeddedR(sizeof(argv) / sizeof(*argv), argv) ) {
+	rargc = sizeof(rargv)/sizeof(rargv[0]);
+
+    if( !Rf_initEmbeddedR(rargc, rargv) ) {
         //TODO: return an error
-        ;
+		lprintf(ERROR, "can not start Embedded R");
     }
 
     /*
      * temporarily turn off R error reporting -- it will be turned back on
      * once the custom R error handler is installed from the plr library
      */
+
     load_r_cmd(OPTIONS_NULL_CMD);
 
     /* next load the plr library into R */
