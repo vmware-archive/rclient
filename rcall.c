@@ -752,6 +752,8 @@ SEXP plr_SPI_exec(SEXP rsql) {
     msg            = pmalloc(sizeof(plcMsgSQL));
     msg->msgtype   = MT_SQL;
     msg->sqltype   = SQL_TYPE_STATEMENT;
+	msg->limit     = 0;	/* No limit for R. */
+
     /*
      * satisfy compiler
      */
