@@ -12,6 +12,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <signal.h>
+#include <limits.h>
+#include <unistd.h>
 
 /* R header files */
 #include <R.h>
@@ -35,6 +37,10 @@
 #else /* R_VERSION < 2.5.0 */
 #define R_PARSEVECTOR(a_, b_, c_)  R_ParseVector(a_, b_, (ParseStatus *) c_)
 #endif /* R_VERSION >= 2.5.0 */
+
+#ifndef PATH_MAX
+#define PATH_MAX 2048
+#endif
 
 #define OPTIONS_NULL_CMD    "options(error = expression(NULL))"
 
@@ -90,15 +96,15 @@ void throw_r_error(const char **msg);
 SEXP plr_SPI_exec(SEXP rsql);
 
 /* Function definitions */
-static char *get_load_self_ref_cmd(const char *libstr);
-static void load_r_cmd(const char *cmd);
+static char *get_load_self_ref_cmd();
+static int load_r_cmd(const char *cmd);
 static void send_error(plcConn* conn, char *msg);
 static SEXP parse_r_code(const char *code,  plcConn* conn, int *errorOccurred);
 static char *create_r_func(plcMsgCallreq *req);
 static int handle_matrix_set( SEXP retval, plcRFunction *r_func, plcMsgResult *res );
 static int handle_retset( SEXP retval, plcRFunction *r_func, plcMsgResult *res );
 static int process_call_results(plcConn *conn, SEXP retval, plcRFunction *r_func);
-static SEXP arguments_to_r (plcConn *conn, plcRFunction *r_func);
+static SEXP arguments_to_r (plcRFunction *r_func);
 static void pg_get_one_r(char *value, plcDatatype column_type, SEXP *obj, int elnum);
 
 /* Externs */
@@ -116,12 +122,46 @@ char *last_R_error_msg,
 
 /* Global PL/Container connection */
 plcConn* plcconn_global;
+plcMsgError *plcLastErrMessage = NULL;
 
-void r_init( ) {
-    char   *rargv[] = {"rclient", "--slave", "--silent", "--no-save", "--no-restore"};
-    char   *buf;
+int r_init( ) {
+	char   *rargv[] = {"rclient", "--slave", "--silent", "--no-save", "--no-restore"};
+	char   *buf;
 	char   *r_home;
 	int     rargc;
+	int     status;
+	int 	i;
+	char   *cmd;
+	char   *cmds[] =
+		{
+			/* first turn off error handling by R */
+			OPTIONS_NULL_CMD,
+
+			/* set up the postgres error handler in R */
+			THROWRERROR_CMD,
+			OPTIONS_THROWRERROR_CMD,
+			THROWNOTICE_CMD,
+			THROWERROR_CMD,
+			OPTIONS_THROWWARN_CMD,
+
+			/* install the commands for SPI support in the interpreter */
+			SPI_EXEC_CMD,
+			SPI_DBGETQUERY_CMD,
+
+			/* setup debug log to greenplum db */
+			PG_LOG_DEBUG_CMD,
+			PG_LOG_LOG_CMD,
+			PG_LOG_INFO_CMD,
+			PG_LOG_NOTICE_CMD,
+			PG_LOG_WARNING_CMD,
+			PG_LOG_ERROR_CMD,
+			PG_LOG_FATAL_CMD,
+			SPI_DBGETQUERY_CMD,
+
+			/* terminate */
+			NULL
+		};
+
 
 	r_home = getenv("R_HOME");
     /*
@@ -131,6 +171,7 @@ void r_init( ) {
     R_SignalHandlers = 0;
 	if (r_home == NULL){
 		lprintf(ERROR, "R_HOME is not set, please check and set the R_HOME");
+		return -1;
 	}
 
 	rargc = sizeof(rargv)/sizeof(rargv[0]);
@@ -145,37 +186,53 @@ void r_init( ) {
      * once the custom R error handler is installed from the plr library
      */
 
-    load_r_cmd(OPTIONS_NULL_CMD);
+    status = load_r_cmd(cmds[0]);
 
-    /* next load the plr library into R */
-    load_r_cmd(buf=get_load_self_ref_cmd("librcall.so"));
+    if (status < 0) {
+        return -1;
+    }
+
+    status = load_r_cmd(buf=get_load_self_ref_cmd());
     pfree(buf);
 
-    load_r_cmd(THROWRERROR_CMD);
-    load_r_cmd(OPTIONS_THROWRERROR_CMD);
-    load_r_cmd(THROWNOTICE_CMD);
-    load_r_cmd(THROWERROR_CMD);
-    load_r_cmd(OPTIONS_THROWWARN_CMD);
-    load_r_cmd(SPI_EXEC_CMD);
-    load_r_cmd(PG_LOG_DEBUG_CMD);
-    load_r_cmd(PG_LOG_LOG_CMD);
-    load_r_cmd(PG_LOG_INFO_CMD);
-    load_r_cmd(PG_LOG_NOTICE_CMD);
-    load_r_cmd(PG_LOG_WARNING_CMD);
-    load_r_cmd(PG_LOG_ERROR_CMD);
-    load_r_cmd(PG_LOG_FATAL_CMD);
-    load_r_cmd(SPI_DBGETQUERY_CMD);
+    if (status < 0) {
+        return -1;
+    }
+
+    for (i = 1; (cmd = cmds[i]); i++) {
+        status = load_r_cmd(cmds[i]);
+        if (status < 0) {
+            return -1;
+        }
+    }
+
+    return 0;
 
 }
 
-static char *get_load_self_ref_cmd(const char *libstr) {
-    char   *buf =  (char *) pmalloc(strlen(libstr) + 12 + 1);;
+static char *get_load_self_ref_cmd() {
+	char   *buf =  (char *) pmalloc(PATH_MAX);
 
-    sprintf(buf, "dyn.load(\"%s\")", libstr);
-    return buf;
+#ifdef __linux__
+	char   path[PATH_MAX];
+	char   *p;
+	/* next load the plr library into R */
+	if (readlink("/proc/self/exe", path, PATH_MAX) == -1) {
+		lprintf(ERROR, "can not read execute path");
+		}
+
+	if((p = strrchr(path, '/'))) {
+		*(p+1) = '\0';
+	}
+
+	sprintf(buf, "dyn.load(\"%s/%s\")", path, "librcall.so");
+#else
+	sprintf(buf, "dyn.load(\"%s\")", "librcall.so");
+#endif
+	return buf;
 }
 
-static void load_r_cmd(const char *cmd) {
+static int load_r_cmd(const char *cmd) {
     SEXP        cmdSexp,
                 cmdexpr;
     int            i,
@@ -200,13 +257,14 @@ static void load_r_cmd(const char *cmd) {
     }
 
     UNPROTECT(2);
-    return;
+    return 0;
 
 error:
 
     UNPROTECT(2);
-    raise_execution_error(plcconn_global,  "Error evaluating function");
-    return;
+    raise_execution_error("Error evaluating function %s", cmd);
+
+    return -1;
 }
 
 void handle_call(plcMsgCallreq *req, plcConn* conn) {
@@ -244,7 +302,7 @@ void handle_call(plcMsgCallreq *req, plcConn* conn) {
     }
 
     if (req->nargs > 0) {
-        rargs = arguments_to_r(conn, r_func);
+        rargs = arguments_to_r(r_func);
         PROTECT(call = lcons(r, rargs));
     } else {
         PROTECT(call = lcons(r, R_NilValue));
@@ -528,8 +586,7 @@ static int handle_retset( SEXP retval, plcRFunction *r_func, plcMsgResult *res )
         for (i=0; i < res->rows; i++) {
 
             if (r_func->res.conv.outputfunc == NULL) {
-                    raise_execution_error(plcconn_global,
-                                          "Type %d is not yet supported by R container",
+                    raise_execution_error("Type %d is not yet supported by R container",
                                           (int)res->types[0].type);
                     free_result(res, true);
                     return -1;
@@ -581,8 +638,7 @@ static int process_call_results(plcConn *conn, SEXP retval, plcRFunction *r_func
 
                 res->data[i][0].isnull = 0;
                 if (r_func->res.conv.outputfunc == NULL) {
-                        raise_execution_error(plcconn_global,
-                                              "Type %d is not yet supported by R container",
+                        raise_execution_error("Type %d is not yet supported by R container",
                                               (int)res->types[0].type);
                         free_result(res, true);
                         return -1;
@@ -591,8 +647,7 @@ static int process_call_results(plcConn *conn, SEXP retval, plcRFunction *r_func
                 ret = r_func->res.conv.outputfunc(retval, &res->data[i][0].value, &r_func->res);
 
                 if (ret != 0) {
-                    raise_execution_error(plcconn_global,
-                                          "Exception raised converting function output to function output type %d",
+                    raise_execution_error("Exception raised converting function output to function output type %d",
                                           (int)res->types[0].type);
                     free_result(res, true);
                     return -1;
@@ -608,7 +663,7 @@ static int process_call_results(plcConn *conn, SEXP retval, plcRFunction *r_func
     return 0;
 }
 
-static SEXP arguments_to_r (plcConn *conn, plcRFunction *r_func) {
+static SEXP arguments_to_r (plcRFunction *r_func) {
     SEXP r_args, r_curarg, allargs, element;
     int i, notnull=0;
 
@@ -634,8 +689,7 @@ static SEXP arguments_to_r (plcConn *conn, plcRFunction *r_func) {
         } else {
 
             if (r_func->args[i].conv.inputfunc == NULL) {
-                raise_execution_error(conn,
-                                      "Parameter '%s' type %d is not supported",
+                raise_execution_error("Parameter '%s' type %d is not supported",
                                       r_func->args[i].argName,
                                       r_func->args[i].type);
                 UNPROTECT(2);
@@ -647,8 +701,7 @@ static SEXP arguments_to_r (plcConn *conn, plcRFunction *r_func) {
         }
 
         if (element == NULL) {
-            raise_execution_error(conn,
-                                  "Converting parameter '%s' to R type failed",
+            raise_execution_error("Converting parameter '%s' to R type failed",
                                   r_func->args[i].argName);
 
             /* we've made it to the i'th argument */
@@ -707,7 +760,7 @@ static void pg_get_one_r(char *value,  plcDatatype column_type, SEXP *obj, int e
         case PLC_DATA_UDT:
         case PLC_DATA_INVALID:
         case PLC_DATA_ARRAY:
-            raise_execution_error(plcconn_global,  "unhandled type %s [%d]",
+            raise_execution_error("unhandled type %s [%d]",
                            plc_get_type_name(column_type), column_type);
             break;
 
@@ -740,7 +793,7 @@ SEXP plr_SPI_exec(SEXP rsql) {
     UNPROTECT(1);
 
     if (sql == NULL) {
-        raise_execution_error(plcconn_global, "cannot execute empty query");
+        raise_execution_error("cannot execute empty query");
         return NULL;
     }
 
@@ -767,7 +820,7 @@ SEXP plr_SPI_exec(SEXP rsql) {
 receive:
     res = plcontainer_channel_receive(plcconn_global, &resp);
     if (res < 0) {
-        raise_execution_error(plcconn_global,  "Error receiving data from the backend, %d", res);
+        raise_execution_error("Error receiving data from the backend, %d", res);
         return NULL;
     }
 
@@ -780,7 +833,7 @@ receive:
         case MT_RESULT:
             break;
         default:
-            raise_execution_error(plcconn_global, "didn't receive result back %c", resp->msgtype);
+            raise_execution_error("didn't receive result back %c", resp->msgtype);
             return NULL;
     }
 
@@ -853,37 +906,58 @@ receive:
     return r_result;
 }
 
-void raise_execution_error (plcConn *conn, const char *format, ...) {
-    va_list        args;
-    plcMsgError   *err;
-    char          *msg;
-    int            len, res;
+void raise_execution_error (const char *format, ...) {
+    char *msg   = NULL;
+
+    /* First send the message saved if there is any */
+    plc_raise_delayed_error(plcconn_global);
 
     if (format == NULL) {
-        lprintf(FATAL, "Error message cannot be NULL");
-        return;
+        msg = strdup("Error message cannot be NULL in raise_execution_error()");
+    } else {
+        va_list args;
+        int     len, res;
+
+        va_start(args, format);
+        len = 100 + 2 * strlen(format);
+        msg = (char*)malloc(len + 1);
+        res = vsnprintf(msg, len, format, args);
+        if (res < 0 || res >= len) {
+            msg = strdup("Error formatting error message string in raise_execution_error()");
+        }
     }
 
-    va_start(args, format);
-    len = 100 + 2 * strlen(format);
-    msg = (char*)malloc(len + 1);
-    res = vsnprintf(msg, len, format, args);
-    if (res < 0 || res >= len) {
-        lprintf(FATAL, "Error formatting error message string");
-    } else {
+    if (plcLastErrMessage == NULL && plc_is_execution_terminated == 0) {
+        plcMsgError *err;
+
         /* an exception to be thrown */
         err             = malloc(sizeof(plcMsgError));
         err->msgtype    = MT_EXCEPTION;
         err->message    = msg;
         err->stacktrace = "";
 
-        /* send the result back */
-        plcontainer_channel_send(conn, (plcMessage*)err);
+        /* When no connection available - keep the error message in stack */
+        plcLastErrMessage = err;
+        plc_raise_delayed_error(plcconn_global);
+    } else {
+        lprintf(WARNING, "Cannot send second subsequent error message to backend:");
+        lprintf(WARNING, msg);
+        free(msg);
     }
 
-    /* free the objects */
-    free(err);
-    free(msg);
+}
+
+void plc_raise_delayed_error(plcConn* conn) {
+    if (plcLastErrMessage != NULL) {
+        if (plc_is_execution_terminated == 0 && conn != NULL ) {
+            plcontainer_channel_send(conn, (plcMessage*)plcLastErrMessage);
+            free_error(plcLastErrMessage);
+            plcLastErrMessage = NULL;
+            plc_is_execution_terminated = 1;
+        } else if (conn == NULL) {
+            lprintf(ERROR, "client caught an error: %s", plcLastErrMessage->message);
+        }
+    }
 }
 
 void throw_pg_notice(const char **msg) {

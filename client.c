@@ -15,12 +15,13 @@
 int main(int argc UNUSED, char **argv UNUSED) {
     int      sock;
     plcConn* conn;
+    int      status;
 
     // Bind the socket and start listening the port
     sock = start_listener();
 
     // Initialize R
-    r_init();
+    status = r_init();
 
 #ifdef _DEBUG_CLIENT
     // In debug mode we have a cycle of connections with infinite wait time
@@ -33,7 +34,12 @@ int main(int argc UNUSED, char **argv UNUSED) {
     // and the client works for a single connection only
     connection_wait(sock);
     conn = connection_init(sock);
-    receive_loop(handle_call, conn);
+    if (status == 0){
+        receive_loop(handle_call, conn);
+    } else {
+        plc_raise_delayed_error(conn);
+    }
+
 #endif
 
     lprintf(NOTICE, "Client has finished execution");
