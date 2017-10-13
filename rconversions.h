@@ -71,6 +71,7 @@ void plc_free_result_conversions(plcRResult *res);
 SEXP get_r_vector(plcDatatype type_id, int numels);
 rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *type);
 int plc_r_matrix_as_setof(SEXP input, int start, int dim1, char **output, plcRType *type);
+plcROutputFunc plc_get_output_function(plcDatatype dt);
 
 //#define DEBUGPROTECT
 

@@ -35,7 +35,6 @@ static void plc_r_object_iter_free (plcIterator *iter);
 static rawdata *plc_r_object_as_array_next (plcIterator *iter);
 
 static plcRInputFunc plc_get_input_function(plcDatatype dt, bool isArrayElement);
-static plcROutputFunc plc_get_output_function(plcDatatype dt);
 
 static void plc_parse_type(plcRType *Rtype, plcType *type, char* argName, bool isArrayElement);
 
@@ -587,6 +586,8 @@ rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype)
                 break;
 
             case PLC_DATA_TEXT:
+            default:
+                /* Everything else is defaulted to string */
                 if (vector == NA_STRING || STRING_ELT(vector, idx) == NA_STRING) {
                     res->isnull = TRUE;
                     res->value  = NULL;
@@ -594,10 +595,6 @@ rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype)
                     res->isnull = FALSE;
                     res->value  = pstrdup((char *) CHAR( STRING_ELT(vector, idx) ));
                 }
-
-            default:
-                /* Everything else is defaulted to string */
-                ;//SET_STRING_ELT(*obj, elnum, COPY_TO_USER_STRING(value));
         }
 
     }
@@ -930,7 +927,7 @@ static plcRInputFunc plc_get_input_function(plcDatatype dt, bool isArrayElement)
     return res;
 }
 
-static plcROutputFunc plc_get_output_function(plcDatatype dt) {
+plcROutputFunc plc_get_output_function(plcDatatype dt) {
     plcROutputFunc res = NULL;
     switch (dt) {
         case PLC_DATA_INT1:

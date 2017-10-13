@@ -25,6 +25,7 @@
 
 /* PL/Container header files */
 #include "common/comm_channel.h"
+#include "common/messages/messages.h"
 #include "common/comm_utils.h"
 #include "common/comm_connectivity.h"
 #include "common/comm_server.h"
@@ -41,6 +42,8 @@
 #ifndef PATH_MAX
 #define PATH_MAX 2048
 #endif
+
+#define TYPE_ID_LENGTH 12
 
 #define OPTIONS_NULL_CMD    "options(error = expression(NULL))"
 
@@ -75,6 +78,14 @@
             "return(data)\n" \
             "}"
 
+#define SPI_PREPARE_CMD \
+			"pg.spi.prepare <-function(sql, argtypes = NA) " \
+			"{.Call(\"plr_SPI_prepare\", sql, argtypes)}"
+
+#define SPI_EXECP_CMD \
+			"pg.spi.execp <-function(sql, argvalues = NA) " \
+			"{.Call(\"plr_SPI_execp\", sql, argvalues)}"
+
 #define PG_LOG_DEBUG_CMD \
     "plr.debug <- function(msg) {.Call(\"plr_debug\",msg)}"
 #define PG_LOG_LOG_CMD \
@@ -94,6 +105,8 @@
 void throw_pg_notice(const char **msg);
 void throw_r_error(const char **msg);
 SEXP plr_SPI_exec(SEXP rsql);
+SEXP plr_SPI_prepare(SEXP rsql, SEXP rargtypes);
+SEXP plr_SPI_execp(SEXP rsaved_plan, SEXP rargvalues);
 
 /* Function definitions */
 static char *get_load_self_ref_cmd(void);
@@ -106,10 +119,7 @@ static int handle_retset( SEXP retval, plcRFunction *r_func, plcMsgResult *res )
 static int process_call_results(plcConn *conn, SEXP retval, plcRFunction *r_func);
 static SEXP arguments_to_r (plcRFunction *r_func);
 static void pg_get_one_r(char *value, plcDatatype column_type, SEXP *obj, int elnum);
-
-/* Externs */
-extern SEXP plr_SPI_execp(const char * sql);
-
+static SEXP process_SPI_results();
 
 /* Globals */
 
@@ -124,7 +134,14 @@ char *last_R_error_msg,
 plcConn* plcconn_global;
 plcMsgError *plcLastErrMessage = NULL;
 
-int r_init( ) {
+/* R objects */
+typedef struct r_saved_plan {
+	void        *pplan; /* Store the pointer to plan on the QE side. */
+	plcDatatype *argtypes;
+	int          nargs;
+} r_saved_plan;
+
+int r_init(void) {
 	char   *rargv[] = {"rclient", "--slave", "--silent", "--no-save", "--no-restore"};
 	char   *buf;
 	char   *r_home;
@@ -146,6 +163,8 @@ int r_init( ) {
 
 			/* install the commands for SPI support in the interpreter */
 			SPI_EXEC_CMD,
+			SPI_PREPARE_CMD,
+			SPI_EXECP_CMD,
 			SPI_DBGETQUERY_CMD,
 
 			/* setup debug log to greenplum db */
@@ -207,7 +226,6 @@ int r_init( ) {
     }
 
     return 0;
-
 }
 
 static char *get_load_self_ref_cmd() {
@@ -726,191 +744,402 @@ static SEXP arguments_to_r (plcRFunction *r_func) {
 /*
  * given a single non-array pg value, convert to its R value representation
  */
-static void pg_get_one_r(char *value,  plcDatatype column_type, SEXP *obj, int elnum) {
+static void pg_get_one_r(char *value, plcDatatype column_type, SEXP *obj, int elnum) {
 
-    switch (column_type) {
+	int bsize;
+	switch (column_type) {
 
-        /* 2 and 4 byte integer pgsql datatype => use R INTEGER */
-        case PLC_DATA_INT2:
-            INTEGER_DATA(*obj)[elnum] = *((int16 *)value);
-            break;
-        case PLC_DATA_INT4:
-            INTEGER_DATA(*obj)[elnum] = *((int32 *)value);
-            break;
+		/* 2 and 4 byte integer pgsql datatype => use R INTEGER */
+		case PLC_DATA_INT2:
+			INTEGER_DATA(*obj)[elnum] = *((int16 *) value);
+			break;
+		case PLC_DATA_INT4:
+			INTEGER_DATA(*obj)[elnum] = *((int32 *) value);
+			break;
 
-            /*
-             * Other numeric types => use R REAL
-             * Note pgsql int8 is mapped to R REAL
-             * because R INTEGER is only 4 byte
-             */
-        case PLC_DATA_INT8:
-            NUMERIC_DATA(*obj)[elnum] = (int64)(*((float8 *)value));
-            break;
-        case PLC_DATA_FLOAT4:
-            NUMERIC_DATA(*obj)[elnum] = *((float4 *)value);
-            break;
-        case PLC_DATA_FLOAT8:
-            NUMERIC_DATA(*obj)[elnum] = *((float8 *)value);
-            break;
+			/*
+			 * Other numeric types => use R REAL
+			 * Note pgsql int8 is mapped to R REAL
+			 * because R INTEGER is only 4 byte
+			 */
+		case PLC_DATA_INT8:
+			NUMERIC_DATA(*obj)[elnum] = (int64) (*((float8 *) value));
+			break;
+		case PLC_DATA_FLOAT4:
+			NUMERIC_DATA(*obj)[elnum] = *((float4 *) value);
+			break;
+		case PLC_DATA_FLOAT8:
+			NUMERIC_DATA(*obj)[elnum] = *((float8 *) value);
+			break;
 
-        case PLC_DATA_INT1:
-            LOGICAL_DATA(*obj)[elnum] = *((int8 *)value);
-            break;
+		case PLC_DATA_INT1:
+			LOGICAL_DATA(*obj)[elnum] = *((int8 *) value);
+			break;
 
-        case PLC_DATA_UDT:
-        case PLC_DATA_INVALID:
-        case PLC_DATA_ARRAY:
-            raise_execution_error("unhandled type %s [%d]",
-                           plc_get_type_name(column_type), column_type);
-            break;
+		case PLC_DATA_UDT:
+		case PLC_DATA_INVALID:
+		case PLC_DATA_ARRAY:
+			raise_execution_error("unhandled type %s [%d]",
+			                      plc_get_type_name(column_type), column_type);
+			break;
 
-        case PLC_DATA_TEXT:
-        default:
-            /* Everything else is defaulted to string */
-            SET_STRING_ELT(*obj, elnum, COPY_TO_USER_STRING(((char *)value)));
-    }
+		case PLC_DATA_BYTEA:
+			/*
+			 * for bytea type, we first get its size then do copy
+			 * based on upstream, we trade it as TEXT, so '\0' is
+			 * not accepted in bytea type
+			 */
+			if (value[0] != '\0') {
+				bsize = *((int *) value);
+				SET_STRING_ELT(*obj, elnum, mkCharLen(value + 4, bsize));
+				break;
+			}
+		case PLC_DATA_TEXT:
+		default:
+			/* Everything else is defaulted to string */
+			if (value){
+				SET_STRING_ELT(*obj, elnum, COPY_TO_USER_STRING(value));
+			} else {
+				SET_STRING_ELT(*obj, elnum, NA_STRING);
+			}
+	}
+}
+
+/*
+ * common function for SPI exec and SPI execp to extract returned results
+ */
+static SEXP process_SPI_results() {
+	plcMsgResult *result;
+	plcMessage   *resp;
+	SEXP r_result = NULL,
+		 names,
+		 row_names,
+		 fldvec;
+
+	int i, j,
+		res = 0;
+
+	char buf[256];
+
+receive:
+    res = plcontainer_channel_receive(plcconn_global, &resp, MT_CALLREQ_BIT|MT_RESULT_BIT);
+	if (res < 0) {
+		raise_execution_error("Error receiving data from the backend, %d", res);
+		return NULL;
+	}
+
+	switch (resp->msgtype) {
+		case MT_CALLREQ:
+			handle_call((plcMsgCallreq *) resp, plcconn_global);
+			free_callreq((plcMsgCallreq *) resp, false, false);
+			goto receive;
+
+		case MT_RESULT:
+			break;
+		default:
+			raise_execution_error("didn't receive result back %c", resp->msgtype);
+			return NULL;
+	}
+
+	result = (plcMsgResult *) resp;
+	if (result->rows == 0) {
+		return R_NilValue;
+	}
+
+	/*
+	 * r_result is a list of columns
+	 */
+	PROTECT(r_result = NEW_LIST(result->cols));
+
+	/*
+	 * names for each column
+	 */
+	PROTECT(names = NEW_CHARACTER(result->cols));
+
+	/*
+	 * we store everything in columns because vectors can only have one type
+	 * normally we get tuples back in rows with each column possibly a different type,
+	 * instead we store each column in a single vector
+	 */
+
+	for (j = 0; j < result->cols; j++) {
+		/*
+		 * set the names of the column
+		 */
+		SET_STRING_ELT(names, j, Rf_mkChar(result->names[j]));
+
+		/*
+		 * create a vector of the type that is rows long
+		 * For type BYTEA, we process it as TEXT
+		 */
+		if (result->types[0].type == PLC_DATA_BYTEA) {
+			PROTECT(fldvec = get_r_vector(PLC_DATA_TEXT, result->rows));
+		} else {
+			PROTECT(fldvec = get_r_vector(result->types[0].type, result->rows));
+		}
+
+		for (i = 0; i < result->rows; i++) {
+			/*
+			 * store the value
+			 */
+			pg_get_one_r(result->data[i][j].value, result->types[0].type, &fldvec, i);
+		}
+
+		UNPROTECT(1);
+		SET_VECTOR_ELT(r_result, j, fldvec);
+	}
+
+	/* attach the column names */
+	setAttrib(r_result, R_NamesSymbol, names);
+
+	/* attach row names - basically just the row number, zero based */
+	PROTECT(row_names = allocVector(STRSXP, result->rows));
+
+	for (i = 0; i < result->rows; i++) {
+		sprintf(buf, "%d", i + 1);
+		SET_STRING_ELT(row_names, i, COPY_TO_USER_STRING(buf));
+	}
+
+	setAttrib(r_result, R_RowNamesSymbol, row_names);
+
+	/* finally, tell R we are a data.frame */
+	setAttrib(r_result, R_ClassSymbol, mkString("data.frame"));
+
+	/*
+	 * result has an attribute names which is a vector of names
+	 * a vector of vectors num columns long by num rows
+	 */
+	free_result(result, false);
+
+	UNPROTECT(3);
+	return r_result;
+
 }
 
 /*
  * plr_SPI_exec - The builtin SPI_exec command for the R interpreter
  */
 SEXP plr_SPI_exec(SEXP rsql) {
-    const char     *sql;
-    SEXP            r_result = NULL,
-                    names,
-                    row_names,
-                    fldvec;
-    int             res = 0,
-                    i,j;
-    char            buf[256];
+	const char *sql;
+	plcMsgSQL  *msg;
 
-    plcMsgSQL      *msg;
-    plcMsgResult   *result;
-    plcMessage     *resp;
+	PROTECT(rsql = AS_CHARACTER(rsql));
+	sql = CHAR(STRING_ELT(rsql, 0));
+	UNPROTECT(1);
 
-    PROTECT(rsql =  AS_CHARACTER(rsql));
-    sql = CHAR(STRING_ELT(rsql, 0));
-    UNPROTECT(1);
+	if (sql == NULL) {
+		raise_execution_error("cannot execute empty query");
+		return NULL;
+	}
 
-    if (sql == NULL) {
-        raise_execution_error("cannot execute empty query");
-        return NULL;
-    }
+	/* If the execution was terminated we don't need to proceed with SPI */
+	if (plc_is_execution_terminated != 0) {
+		return NULL;
+	}
 
-    /* If the execution was terminated we don't need to proceed with SPI */
-    if (plc_is_execution_terminated != 0) {
-        return NULL;
-    }
+	msg = pmalloc(sizeof(plcMsgSQL));
+	msg->msgtype = MT_SQL;
+	msg->sqltype = SQL_TYPE_STATEMENT;
+	msg->limit = 0;    /* No limit for R. */
 
-    msg            = pmalloc(sizeof(plcMsgSQL));
-    msg->msgtype   = MT_SQL;
-    msg->sqltype   = SQL_TYPE_STATEMENT;
-	msg->limit     = 0;	/* No limit for R. */
+	/*
+	 * satisfy compiler
+	 */
+	msg->statement = (char *) sql;
 
-    /*
-     * satisfy compiler
-     */
-    msg->statement = (char *)sql;
+	plcontainer_channel_send(plcconn_global, (plcMessage *) msg);
 
-    plcontainer_channel_send(plcconn_global, (plcMessage*)msg);
+	/* we don't need it anymore */
+	pfree(msg);
 
-    /* we don't need it anymore */
-    pfree(msg);
+	return process_SPI_results();
 
-receive:
-    res = plcontainer_channel_receive(plcconn_global, &resp, MT_CALLREQ_BIT|MT_RESULT_BIT);
-    if (res < 0) {
-        raise_execution_error("Error receiving data from the backend, %d", res);
-        return NULL;
-    }
+}
 
-    switch (resp->msgtype) {
-        case MT_CALLREQ:
-            handle_call((plcMsgCallreq*)resp, plcconn_global);
-            free_callreq((plcMsgCallreq*)resp, false, false);
-            goto receive;
+/*
+ * plr_SPI_prepare - The builtin SPI_prepare command for the R interpreter
+ */
+SEXP plr_SPI_prepare(SEXP rsql, SEXP rargtypes) {
+	const char *query;
+	int nargs;
+	int res;
+	int i;
+	plcConn *conn = plcconn_global;
+	r_saved_plan *r_plan;
 
-        case MT_RESULT:
-            break;
-        default:
-            raise_execution_error("didn't receive result back %c", resp->msgtype);
-            return NULL;
-    }
+	SEXP r_result;
 
-    result = (plcMsgResult*)resp;
-    if (result->rows == 0) {
-        return R_NilValue;
-    }
+	plcMsgSQL msg;
+	plcMessage *resp;
 
-    /*
-     * r_result is a list of columns
-     */
-    PROTECT(r_result = NEW_LIST(result->cols));
+	char *start;
+	int offset = 0, tx_len = 0;
+	int is_plan_valid;
 
-    /*
-     * names for each column
-     */
-    PROTECT(names = NEW_CHARACTER(result->cols));
+	PROTECT(rsql = AS_CHARACTER(rsql));
+	query = CHAR(STRING_ELT(rsql, 0));
+	UNPROTECT(1);
 
-    /*
-     * we store everything in columns because vectors can only have one type
-     * normally we get tuples back in rows with each column possibly a different type,
-     * instead we store each column in a single vector
-     */
+		lprintf(NOTICE, "start to prepare");
+	if (query == NULL) {
+		raise_execution_error("cannot prepare empty query");
+		return NULL;
+	}
 
-    for (j=0; j<result->cols; j++) {
-        /*
-         * set the names of the column
-         */
-        SET_STRING_ELT(names, j, Rf_mkChar(result->names[j]));
+	PROTECT(rargtypes = AS_INTEGER(rargtypes));
+	if (!isVector(rargtypes) || !isInteger(rargtypes)) {
+		raise_execution_error("second parameter must be a vector of PostgreSQL datatypes");
+	}
 
-        //create a vector of the type that is rows long
-        PROTECT(fldvec = get_r_vector(result->types[0].type, result->rows));
+	/* deal with case of no parameters for the prepared query */
+	if (rargtypes == R_MissingArg || INTEGER(rargtypes)[0] == NA_INTEGER) {
+		nargs = 0;
+	} else {
+		nargs = length(rargtypes);
+	}
 
-        for (i=0; i<result->rows; i++) {
-            /*
-             * store the value
-             */
-            pg_get_one_r(result->data[i][j].value, result->types[0].type, &fldvec, i);
-        }
+	if (nargs < 0) {
+		raise_execution_error("second parameter must be a vector of PostgreSQL datatypes");
+	}
 
-        UNPROTECT(1);
-        SET_VECTOR_ELT(r_result, j, fldvec);
-    }
+	msg.msgtype = MT_SQL;
+	msg.sqltype = SQL_TYPE_PREPARE;
+	msg.nargs = nargs;
+	msg.statement = strdup(query);
+	msg.args = malloc(msg.nargs * sizeof(plcArgument));
 
-    /* attach the column names */
-    setAttrib(r_result, R_NamesSymbol, names);
+	for (i = 0; i < nargs; i++) {
+		char typeid[TYPE_ID_LENGTH];
+		sprintf(typeid, "%d", INTEGER(rargtypes)[i]);
+		fill_prepare_argument(&msg.args[i], typeid, PLC_DATA_INT4);
+	}
 
-    /* attach row names - basically just the row number, zero based */
-    PROTECT(row_names = allocVector(STRSXP, result->rows));
+	UNPROTECT(1);
 
-    for (i=0; i < result->rows; i++) {
-        sprintf(buf, "%d", i+1);
-        SET_STRING_ELT(row_names, i, COPY_TO_USER_STRING(buf));
-    }
+	plcontainer_channel_send(conn, (plcMessage *) &msg);
+	free_arguments(msg.args, msg.nargs, false, false);
 
-    setAttrib(r_result, R_RowNamesSymbol, row_names);
+	res = plcontainer_channel_receive(conn, &resp, MT_RAW_BIT);
 
-    /* finally, tell R we are a data.frame */
-    setAttrib(r_result, R_ClassSymbol, mkString("data.frame"));
+	if (res < 0) {
+		raise_execution_error("Error receiving data from the frontend, %d", res);
+		return NULL;
+	}
 
-    /*
-     * result has
-     *
-     * an attribute names which is a vector of names
-     * a vector of vectors num columns long by num rows
-     */
-    free_result(result, false);
+	start = ((plcMsgRaw *) resp)->data;
+	tx_len = ((plcMsgRaw *) resp)->size;
 
-    UNPROTECT(3);
-    return r_result;
+	r_plan = (r_saved_plan *) malloc(sizeof(r_saved_plan));
+	is_plan_valid = (*((int32 *) (start + offset)));
+	offset += sizeof(int32);
+
+	if (!is_plan_valid) {
+		raise_execution_error("plpy.prepare failed. See backend for details.");
+		return NULL;
+	}
+
+	r_plan->pplan = (int64 *) (*((long long *) (start + offset)));
+	offset += sizeof(int64);
+	r_plan->nargs = *((int *) (start + offset));
+	offset += sizeof(int32);
+
+
+	if (r_plan->nargs != nargs) {
+		raise_execution_error("plpy.prepare: bad argument number: %d "
+			                      "(returned) vs %d (expected).", r_plan->nargs, nargs);
+		return NULL;
+	}
+
+	if (nargs > 0) {
+		if (offset + (signed int) sizeof(plcDatatype) * nargs != tx_len) {
+			raise_execution_error("Client format error for spi prepare. "
+				                      "calculated length (%d) vs transferred length (%d)",
+			                      offset + sizeof(plcDatatype) * nargs, tx_len);
+			return NULL;
+		}
+
+		r_plan->argtypes = malloc(sizeof(plcDatatype) * nargs);
+		if (r_plan->argtypes == NULL) {
+			raise_execution_error("Could not allocate %d bytes for argtypes"
+				                      " in py_plan", sizeof(plcDatatype) * nargs);
+			return NULL;
+		}
+		memcpy(r_plan->argtypes, start + offset, sizeof(plcDatatype) * nargs);
+	}
+
+	r_result = R_MakeExternalPtr(r_plan, R_NilValue, R_NilValue);
+
+	free_rawmsg((plcMsgRaw *) resp);
+
+	return r_result;
+}
+
+/*
+ * plr_SPI_execp - The builtin SPI_execp command for the R interpreter
+ */
+SEXP plr_SPI_execp(SEXP rsaved_plan, SEXP rargvalues) {
+	r_saved_plan *r_plan = (r_saved_plan *) R_ExternalPtrAddr(rsaved_plan);
+	plcArgument  *args;
+	plcMsgSQL     msg;
+
+
+	int nargs, i;
+
+	SEXP obj;
+
+	if (r_plan == NULL) {
+		raise_execution_error("SPI plan does not found");
+		return NULL;
+	}
+
+	nargs = r_plan->nargs;
+	args = pmalloc(sizeof(plcArgument) * nargs);
+	if (nargs > 0) {
+		if (!Rf_isVectorList(rargvalues))
+			raise_execution_error("second parameter must be a list of arguments to the prepared plan");
+
+		if (length(rargvalues) != nargs)
+			raise_execution_error("list of arguments (%d) is not the same length " \
+                  "as that of the prepared plan (%d)",
+			                      length(rargvalues), nargs);
+	}
+
+	for (i = 0; i < nargs; i++) {
+		args[i].type.type = r_plan->argtypes[i];
+		args[i].name = NULL; /* We do not need name */
+		args[i].type.nSubTypes = 0;
+		args[i].type.typeName = NULL;
+		args[i].data.value = NULL;
+
+		PROTECT(obj = VECTOR_ELT(rargvalues, i));
+
+		if (obj != NULL) {
+			args[i].data.isnull = 0;
+			plc_get_output_function(r_plan->argtypes[i])(obj, &args[i].data.value, NULL);
+		} else {
+			/* follow python client */
+			args[i].data.isnull = 1;
+			args[i].data.value = NULL;
+		}
+
+		UNPROTECT(1);
+	}
+
+	msg.msgtype = MT_SQL;
+	msg.sqltype = SQL_TYPE_PEXECUTE;
+	msg.pplan = r_plan->pplan;
+	msg.limit = 0;
+	msg.nargs = nargs;
+	msg.args = args;
+
+	plcontainer_channel_send(plcconn_global, (plcMessage *) &msg);
+	free_arguments(args, nargs, false, false);
+
+	return process_SPI_results();
 }
 
 void raise_execution_error (const char *format, ...) {
-    char *msg   = NULL;
-
-    /* First send the message saved if there is any */
-    plc_raise_delayed_error(plcconn_global);
+    char	*msg = NULL;
 
     if (format == NULL) {
         msg = strdup("Error message cannot be NULL in raise_execution_error()");
