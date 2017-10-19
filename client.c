@@ -17,6 +17,8 @@ int main(int argc UNUSED, char **argv UNUSED) {
     plcConn* conn;
     int      status;
 
+	set_signal_handlers();
+
     // Bind the socket and start listening the port
     sock = start_listener();
 
@@ -27,7 +29,11 @@ int main(int argc UNUSED, char **argv UNUSED) {
     // In debug mode we have a cycle of connections with infinite wait time
     while (true) {
         conn = connection_init(sock);
-        receive_loop(handle_call, conn);
+		if (status == 0){
+			receive_loop(handle_call, conn);
+		} else {
+			plc_raise_delayed_error(conn);
+		}
     }
 #else
     // In release mode we wait for incoming connection for limited time
