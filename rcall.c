@@ -96,7 +96,7 @@ void throw_r_error(const char **msg);
 SEXP plr_SPI_exec(SEXP rsql);
 
 /* Function definitions */
-static char *get_load_self_ref_cmd();
+static char *get_load_self_ref_cmd(void);
 static int load_r_cmd(const char *cmd);
 static void send_error(plcConn* conn, char *msg);
 static SEXP parse_r_code(const char *code,  plcConn* conn, int *errorOccurred);
@@ -941,7 +941,7 @@ void raise_execution_error (const char *format, ...) {
         plc_raise_delayed_error(plcconn_global);
     } else {
         lprintf(WARNING, "Cannot send second subsequent error message to backend:");
-        lprintf(WARNING, msg);
+        lprintf(WARNING, "%s", msg);
         free(msg);
     }
 

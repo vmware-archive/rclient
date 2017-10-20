@@ -22,7 +22,7 @@ int plc_is_execution_terminated;
 void handle_call(plcMsgCallreq *req, plcConn* conn);
 
 // Initialization of R module
-int r_init( );
+int r_init(void);
 
 void raise_execution_error (const char *format, ...);
 void plc_raise_delayed_error(plcConn* conn);
