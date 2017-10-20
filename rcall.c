@@ -818,7 +818,7 @@ SEXP plr_SPI_exec(SEXP rsql) {
     pfree(msg);
 
 receive:
-    res = plcontainer_channel_receive(plcconn_global, &resp);
+    res = plcontainer_channel_receive(plcconn_global, &resp, MT_CALLREQ_BIT|MT_RESULT_BIT);
     if (res < 0) {
         raise_execution_error("Error receiving data from the backend, %d", res);
         return NULL;
