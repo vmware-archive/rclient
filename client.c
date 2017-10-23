@@ -23,6 +23,7 @@ int main(int argc UNUSED, char **argv UNUSED) {
     sock = start_listener();
 
     // Initialize R
+	lprintf(NOTICE, "Client start to listen execution");
     status = r_init();
 
 #ifdef _DEBUG_CLIENT
