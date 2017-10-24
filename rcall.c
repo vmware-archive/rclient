@@ -842,7 +842,20 @@ receive:
 	}
 
 	result = (plcMsgResult *) resp;
-	if (result->rows == 0) {
+
+	/*
+	 * If result->cols=0, it should be the INSERT, UPDATE or DELETE statment
+	 */
+	if (result->rows >= 0 && result->cols == 0) {
+		char buf[64];
+		PROTECT(r_result = NEW_CHARACTER(1));
+		snprintf(buf, sizeof(buf), "%d", result->rows);
+		SET_STRING_ELT(r_result, 0, COPY_TO_USER_STRING(buf));
+		UNPROTECT(1);
+		free_result(result, false);
+		return r_result;
+	} else if (result->rows == 0) {
+		free_result(result, false);
 		return R_NilValue;
 	}
 
