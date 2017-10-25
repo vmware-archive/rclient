@@ -6,6 +6,7 @@
  */
 #include "rconversions.h"
 #include "rcall.h"
+#include "common/comm_channel.h"
 
 static SEXP plc_r_object_from_int1(char *input, plcRType *type);
 static SEXP plc_r_object_from_int2(char *input, plcRType *type);
@@ -466,7 +467,6 @@ static void plc_r_object_iter_free (plcIterator *iter) {
 rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype)
 {
     rawdata *res  = (rawdata*)pmalloc(sizeof(rawdata));
-
     if ((vector == R_NilValue)
                 || ( (TYPEOF(vector) == LGLSXP) && (asLogical(vector) == NA_LOGICAL) )
                 || ( (TYPEOF(vector) == INTSXP) && (asInteger(vector) == NA_INTEGER) )
@@ -479,6 +479,13 @@ rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype)
         res->isnull = 0;
         switch (rtype->type) {
             case PLC_DATA_INT1:
+				if (!IS_LOGICAL(vector)) {
+						raise_execution_error("Actual R type is not matching excpected returned type %s [%d]",
+											   plc_get_type_name(rtype->type), rtype->type);
+					pfree(res);
+					res = NULL;
+					break;
+				}
                 res->value = pmalloc(sizeof(int));
                 if (LOGICAL_DATA(vector)[idx] == NA_LOGICAL) {
                     res->isnull = 1;
@@ -489,6 +496,13 @@ rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype)
                 break;
             case PLC_DATA_INT2:
             case PLC_DATA_INT4:
+				if (!IS_INTEGER(vector)) {
+					raise_execution_error("Actual R type is not matching excpected returned type %s [%d]",
+										   plc_get_type_name(rtype->type), rtype->type);
+					pfree(res);
+					res = NULL;
+					break;
+				}
                 /* 2 and 4 byte integer pgsql datatype => use R INTEGER */
                 res->value = pmalloc(sizeof(int));
                 if (INTEGER_DATA(vector)[idx] == NA_INTEGER) {
@@ -514,17 +528,30 @@ rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype)
                     } else {
                         *((int64 *)res->value) = (int64)(INTEGER_DATA(vector)[idx]);
                     }
-                } else {
+                } else if (IS_NUMERIC(vector)){
                     if (R_IsNA(NUMERIC_DATA(vector)[idx])) {
                         res->isnull = 1;
                         *((int64 *)res->value) = (int64)0;
                     } else {
                         *((int64 *)res->value) = (int64)(NUMERIC_DATA(vector)[idx]);
                     }
-                }
+                } else {
+					raise_execution_error("Actual R type is not matching excpected returned type %s [%d]",
+										   plc_get_type_name(rtype->type), rtype->type);
+					pfree(res);
+					res = NULL;
+					break;
+				}
                 break;
 
             case PLC_DATA_FLOAT4:
+				if (!IS_NUMERIC(vector)) {
+					raise_execution_error("Actual R type is not matching excpected returned type %s [%d]",
+										   plc_get_type_name(rtype->type), rtype->type);
+					pfree(res);
+					res = NULL;
+					break;
+				}
                 res->value = pmalloc(sizeof(float4));
                 if (R_IsNA(NUMERIC_DATA(vector)[idx])) {
                     res->isnull = 1;
@@ -534,6 +561,13 @@ rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype)
                 }
                 break;
             case PLC_DATA_FLOAT8:
+				if (!IS_NUMERIC(vector)) {
+					raise_execution_error("Actual R type is not matching excpected returned type %s [%d]",
+										   plc_get_type_name(rtype->type), rtype->type);
+					pfree(res);
+					res = NULL;
+					break;
+				}
                 res->value = pmalloc(sizeof(float8));
                 if (R_IsNA(NUMERIC_DATA(vector)[idx])) {
                     res->isnull = 1;

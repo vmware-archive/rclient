@@ -474,7 +474,6 @@ static char *create_r_func(plcMsgCallreq *req) {
 
 static int handle_frame( SEXP df, plcRFunction *r_func, plcMsgResult *res ) {
     int row, col, cols;
-
     // a data frame is an array of columns, the length of which is the number of columns
     res->cols = 1;
     cols = length(df);
@@ -540,7 +539,6 @@ static int handle_frame( SEXP df, plcRFunction *r_func, plcMsgResult *res ) {
 static int handle_matrix_set( SEXP retval, plcRFunction *r_func, plcMsgResult *res ) {
     int i=0, cols,start=0;
     SEXP rdims;
-
     PROTECT(rdims = getAttrib(retval, R_DimSymbol));
     // get the number of rows
     if (rdims != R_NilValue) {
@@ -585,7 +583,6 @@ static int handle_retset( SEXP retval, plcRFunction *r_func, plcMsgResult *res )
      *  an n dimensional array of text will be handle in handle_matrix_set
      *  having a dimension should guarantee that it is an array of text
      */
-
     if ( isMatrix(retval) || (IS_CHARACTER(retval) && getAttrib(retval, R_DimSymbol) != R_NilValue) ) {
         handle_matrix_set( retval, r_func, res );
     } else if (isFrame(retval)) {
@@ -610,7 +607,12 @@ static int handle_retset( SEXP retval, plcRFunction *r_func, plcMsgResult *res )
                     return -1;
             }
             raw = plc_r_vector_element_rawdata(retval, i, &r_func->res);
-            res->data[i] = raw;
+            if (raw == NULL) {
+				free_result(res, true);
+				return -1;
+			} else {
+				res->data[i] = raw;
+			}
 
         }
     }
