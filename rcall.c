@@ -1128,7 +1128,7 @@ SEXP plr_SPI_execp(SEXP rsaved_plan, SEXP rargvalues) {
 
 		PROTECT(obj = VECTOR_ELT(rargvalues, i));
 
-		if (obj != NULL) {
+		if (obj != NULL && !isNull(obj) && obj != R_NilValue) {
 			args[i].data.isnull = 0;
 			plc_get_output_function(r_plan->argtypes[i])(obj, &args[i].data.value, NULL);
 		} else {
