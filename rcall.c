@@ -473,7 +473,8 @@ static char *create_r_func(plcMsgCallreq *req) {
 }
 
 static int handle_frame( SEXP df, plcRFunction *r_func, plcMsgResult *res ) {
-    int row, col, cols;
+    uint32 row, col, cols;
+
     // a data frame is an array of columns, the length of which is the number of columns
     res->cols = 1;
     cols = length(df);
@@ -485,7 +486,7 @@ static int handle_frame( SEXP df, plcRFunction *r_func, plcMsgResult *res ) {
     plc_r_copy_type(&res->types[0], &r_func->res);
     res->names[0] = strdup(r_func->res.argName);
 
-    for ( row=0; row < res->rows; row++ ) {
+    for (row=0; row < res->rows; row++ ) {
         plcUDT *udt;
 
         // allocate space for the data
@@ -537,7 +538,8 @@ static int handle_frame( SEXP df, plcRFunction *r_func, plcMsgResult *res ) {
 }
 
 static int handle_matrix_set( SEXP retval, plcRFunction *r_func, plcMsgResult *res ) {
-    int i=0, cols,start=0;
+    int cols,start=0;
+	uint32 i;
     SEXP rdims;
     PROTECT(rdims = getAttrib(retval, R_DimSymbol));
     // get the number of rows
@@ -554,7 +556,7 @@ static int handle_matrix_set( SEXP retval, plcRFunction *r_func, plcMsgResult *r
     res->cols = 1;
     res->data = malloc(res->rows * sizeof(rawdata*));
 
-    for (i=0; i<res->rows;i++){
+    for (i=0; i<res->rows; i++){
         res->data[i] = malloc(cols * sizeof(rawdata));
     }
     plc_r_copy_type(&res->types[0], &r_func->res);
@@ -574,7 +576,7 @@ static int handle_matrix_set( SEXP retval, plcRFunction *r_func, plcMsgResult *r
 }
 
 static int handle_retset( SEXP retval, plcRFunction *r_func, plcMsgResult *res ) {
-    int i=0;
+    uint32 i = 0;
     rawdata *raw;
 
     /*
@@ -592,13 +594,13 @@ static int handle_retset( SEXP retval, plcRFunction *r_func, plcMsgResult *res )
         res->cols = 1;
         res->data = malloc(res->rows * sizeof(rawdata*));
 
-        for (i=0; i<res->rows;i++){
+        for (i = 0; i < res->rows; i++){
             res->data[i] = NULL;
         }
         plc_r_copy_type(&res->types[0], &r_func->res);
         res->names[0] = strdup(r_func->res.argName);
 
-        for (i=0; i < res->rows; i++) {
+        for (i = 0; i < res->rows; i++) {
 
             if (r_func->res.conv.outputfunc == NULL) {
                     raise_execution_error("Type %d is not yet supported by R container",
@@ -621,7 +623,8 @@ static int handle_retset( SEXP retval, plcRFunction *r_func, plcMsgResult *res )
 
 static int process_call_results(plcConn *conn, SEXP retval, plcRFunction *r_func) {
     plcMsgResult *res;
-    int i=0, ret=0;
+    uint32 i = 0;
+	int ret=0;
 
 
     /* allocate a result */
@@ -818,8 +821,8 @@ static SEXP process_SPI_results() {
 		 row_names,
 		 fldvec;
 
-	int i, j,
-		res = 0;
+	uint32 i, j;
+	int res = 0;
 
 	char buf[256];
 
@@ -848,7 +851,7 @@ receive:
 	/*
 	 * If result->cols=0, it should be the INSERT, UPDATE or DELETE statment
 	 */
-	if (result->rows >= 0 && result->cols == 0) {
+	if (result->cols == 0) {
 		char buf[64];
 		PROTECT(r_result = NEW_CHARACTER(1));
 		snprintf(buf, sizeof(buf), "%d", result->rows);
