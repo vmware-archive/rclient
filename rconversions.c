@@ -1044,7 +1044,7 @@ plcRFunction *plc_R_init_function(plcMsgCallreq *call) {
 
 plcRResult *plc_init_result_conversions(plcMsgResult *res) {
     plcRResult *Rres = NULL;
-    int i;
+    uint32 i;
 
     Rres = (plcRResult*)malloc(sizeof(plcRResult));
     Rres->res = res;
