@@ -8,7 +8,7 @@
 ifeq (,${R_HOME})
 #R_HOME is not defined
 
-default all clean build debug librcall.so:
+default all clean build librcall.so:
 	@echo ""; \
 	 echo "*** Cannot build PL/Container R client because R_HOME cannot be found." ; \
 	 echo "*** Refer to the documentation for details."; \
@@ -51,10 +51,6 @@ librcall.so: $(shared_src)
 build: client.o librcall.so $(common_objs)
 	$(CC) -o $(CLIENT) $^ $(CLIENT_LDFLAGS)
 	cp $(CLIENT) bin
-
-.PHONY: debug
-debug: CUSTOMFLAGS = -D_DEBUG_CLIENT -g -O0
-debug: build
 
 .PHONY: all
 all: CUSTOMFLAGS = -O3 -g
