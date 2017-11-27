@@ -28,11 +28,14 @@ int main(int argc UNUSED, char **argv UNUSED) {
 
 	set_signal_handlers();
 
-    // Bind the socket and start listening the port
+	/* do not overwrite, if the CLIENT_NAME has already set */
+	setenv("CLIENT_LANGUAGE", "rclient", 0);
+
+	// Bind the socket and start listening the port
     sock = start_listener();
 
     // Initialize R
-	lprintf(NOTICE, "Client start to listen execution");
+	lprintf(LOG, "Client start to listen execution");
     status = r_init();
 
 	connection_wait(sock);
@@ -43,7 +46,7 @@ int main(int argc UNUSED, char **argv UNUSED) {
 		plc_raise_delayed_error(conn);
 	}
 
-    lprintf(NOTICE, "Client has finished execution");
+    lprintf(LOG, "Client has finished execution");
     return 0;
 }
 

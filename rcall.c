@@ -237,7 +237,7 @@ static char *get_load_self_ref_cmd() {
 	/* next load the plr library into R */
 	if (readlink("/proc/self/exe", path, PATH_MAX) == -1) {
 		lprintf(ERROR, "can not read execute path");
-		}
+	}
 
 	if((p = strrchr(path, '/'))) {
 		*(p+1) = '\0';
@@ -297,7 +297,7 @@ void handle_call(plcMsgCallreq *req, plcConn* conn) {
                     *errmsg;
 
 
-/*    lprintf(DEBUG1, "proc %d: %s",iteration++, req->proc.name); */
+    lprintf(DEBUG1, "R client receives a call");
     /*
      * Keep our connection for future calls from R back to us.
     */
@@ -354,6 +354,7 @@ void handle_call(plcMsgCallreq *req, plcConn* conn) {
     plc_r_free_function(r_func);
 
     UNPROTECT(3); //r, strres, call
+    lprintf(DEBUG1, "R client finished processing this call");
 
     return;
 }
@@ -661,10 +662,10 @@ static int process_call_results(plcConn *conn, SEXP retval, plcRFunction *r_func
 
                 res->data[i][0].isnull = 0;
                 if (r_func->res.conv.outputfunc == NULL) {
-                        raise_execution_error("Type %d is not yet supported by R container",
-                                              (int)res->types[0].type);
-                        free_result(res, true);
-                        return -1;
+                    raise_execution_error("Type %d is not yet supported by R container",
+                                          (int)res->types[0].type);
+                    free_result(res, true);
+                    return -1;
                 }
 
                 ret = r_func->res.conv.outputfunc(retval, &res->data[i][0].value, &r_func->res);
@@ -852,9 +853,9 @@ receive:
 	 * If result->cols=0, it should be the INSERT, UPDATE or DELETE statment
 	 */
 	if (result->cols == 0) {
-		char buf[64];
+		char buffer[64];
 		PROTECT(r_result = NEW_CHARACTER(1));
-		snprintf(buf, sizeof(buf), "%d", result->rows);
+		snprintf(buf, sizeof(buffer), "%d", result->rows);
 		SET_STRING_ELT(r_result, 0, COPY_TO_USER_STRING(buf));
 		UNPROTECT(1);
 		free_result(result, false);
@@ -946,7 +947,7 @@ SEXP plr_SPI_exec(SEXP rsql) {
 	UNPROTECT(1);
 
 	if (sql == NULL) {
-		raise_execution_error("cannot execute empty query");
+		raise_execution_error("R client cannot execute empty query");
 		return NULL;
 	}
 
@@ -998,9 +999,8 @@ SEXP plr_SPI_prepare(SEXP rsql, SEXP rargtypes) {
 	query = CHAR(STRING_ELT(rsql, 0));
 	UNPROTECT(1);
 
-		lprintf(NOTICE, "start to prepare");
 	if (query == NULL) {
-		raise_execution_error("cannot prepare empty query");
+		raise_execution_error("R client cannot execute empty query");
 		return NULL;
 	}
 
@@ -1064,14 +1064,14 @@ SEXP plr_SPI_prepare(SEXP rsql, SEXP rargtypes) {
 
 	if (r_plan->nargs != nargs) {
 		raise_execution_error("plpy.prepare: bad argument number: %d "
-			                      "(returned) vs %d (expected).", r_plan->nargs, nargs);
+			                  "(returned) vs %d (expected).", r_plan->nargs, nargs);
 		return NULL;
 	}
 
 	if (nargs > 0) {
 		if (offset + (signed int) sizeof(plcDatatype) * nargs != tx_len) {
 			raise_execution_error("Client format error for spi prepare. "
-				                      "calculated length (%d) vs transferred length (%d)",
+				                  "calculated length (%d) vs transferred length (%d)",
 			                      offset + sizeof(plcDatatype) * nargs, tx_len);
 			return NULL;
 		}
@@ -1113,13 +1113,15 @@ SEXP plr_SPI_execp(SEXP rsaved_plan, SEXP rargvalues) {
 	nargs = r_plan->nargs;
 	args = pmalloc(sizeof(plcArgument) * nargs);
 	if (nargs > 0) {
-		if (!Rf_isVectorList(rargvalues))
+		if (!Rf_isVectorList(rargvalues)) {
 			raise_execution_error("second parameter must be a list of arguments to the prepared plan");
+		}
 
-		if (length(rargvalues) != nargs)
-			raise_execution_error("list of arguments (%d) is not the same length " \
-                  "as that of the prepared plan (%d)",
-			                      length(rargvalues), nargs);
+		if (length(rargvalues) != nargs) {
+			raise_execution_error("list of arguments (%d) is not the same length "
+				                  "as that of the prepared plan (%d)",
+			                       length(rargvalues), nargs);
+		}
 	}
 
 	for (i = 0; i < nargs; i++) {
@@ -1172,6 +1174,7 @@ void raise_execution_error (const char *format, ...) {
         if (res < 0 || res >= len) {
             msg = strdup("Error formatting error message string in raise_execution_error()");
         }
+	    lprintf(WARNING, "R client caught an error: %s", msg);
     }
 
     if (plcLastErrMessage == NULL && plc_is_execution_terminated == 0) {
