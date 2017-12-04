@@ -14,9 +14,9 @@
 #include "rcall.h"
 
 int main(int argc UNUSED, char **argv UNUSED) {
-    int      sock;
-    plcConn* conn;
-    int      status;
+	int sock;
+	plcConn *conn;
+	int status;
 
 	assert(sizeof(int8) == 1);
 	assert(sizeof(int16) == 2);
@@ -32,22 +32,22 @@ int main(int argc UNUSED, char **argv UNUSED) {
 	setenv("CLIENT_LANGUAGE", "rclient", 0);
 
 	// Bind the socket and start listening the port
-    sock = start_listener();
+	sock = start_listener();
 
-    // Initialize R
+	// Initialize R
 	lprintf(LOG, "Client start to listen execution");
-    status = r_init();
+	status = r_init();
 
 	connection_wait(sock);
 	conn = connection_init(sock);
-	if (status == 0){
+	if (status == 0) {
 		receive_loop(handle_call, conn);
 	} else {
 		plc_raise_delayed_error(conn);
 	}
 
-    lprintf(LOG, "Client has finished execution");
-    return 0;
+	lprintf(LOG, "Client has finished execution");
+	return 0;
 }
 
 

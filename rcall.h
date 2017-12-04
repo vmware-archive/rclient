@@ -13,17 +13,19 @@
 #define UNUSED __attribute__ (( unused ))
 
 // Global connection object
-plcConn* plcconn_global;
+plcConn *plcconn_global;
 
 // Global execution termination flag
 int plc_is_execution_terminated;
 
 // Processing of the Greenplum function call
-void handle_call(plcMsgCallreq *req, plcConn* conn);
+void handle_call(plcMsgCallreq *req, plcConn *conn);
 
 // Initialization of R module
 int r_init(void);
 
-void raise_execution_error (const char *format, ...);
-void plc_raise_delayed_error(plcConn* conn);
+void raise_execution_error(const char *format, ...);
+
+void plc_raise_delayed_error(plcConn *conn);
+
 #endif /* PLC_RCALL_H */
