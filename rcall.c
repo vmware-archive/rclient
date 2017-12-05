@@ -49,57 +49,57 @@
 
 /* install the error handler to call our throw_r_error */
 #define THROWRERROR_CMD \
-            "pg.throwrerror <-function(msg) " \
-            "{" \
-            "  msglen <- nchar(msg);" \
-            "  if (substr(msg, msglen, msglen + 1) == \"\\n\")" \
-            "    msg <- substr(msg, 1, msglen - 1);" \
-            "  .C(\"throw_r_error\", as.character(msg));" \
-            "}"
+		"pg.throwrerror <-function(msg) " \
+		"{" \
+		"  msglen <- nchar(msg);" \
+		"  if (substr(msg, msglen, msglen + 1) == \"\\n\")" \
+		"    msg <- substr(msg, 1, msglen - 1);" \
+		"  .C(\"throw_r_error\", as.character(msg));" \
+		"}"
 #define OPTIONS_THROWRERROR_CMD \
-            "options(error = expression(pg.throwrerror(geterrmessage())))"
+		"options(error = expression(pg.throwrerror(geterrmessage())))"
 
 /* install the notice handler to call our throw_r_notice */
 #define THROWNOTICE_CMD \
-            "pg.thrownotice <-function(msg) " \
-            "{.C(\"throw_pg_notice\", as.character(msg))}"
+		"pg.thrownotice <-function(msg) " \
+		"{.C(\"throw_pg_notice\", as.character(msg))}"
 #define THROWERROR_CMD \
-            "pg.throwerror <-function(msg) " \
-            "{stop(msg, call. = FALSE)}"
+		"pg.throwerror <-function(msg) " \
+		"{stop(msg, call. = FALSE)}"
 #define OPTIONS_THROWWARN_CMD \
-            "options(warning.expression = expression(pg.thrownotice(last.warning)))"
+		"options(warning.expression = expression(pg.thrownotice(last.warning)))"
 
 #define SPI_EXEC_CMD \
-            "pg.spi.exec <-function(sql) {.Call(\"plr_SPI_exec\", sql)}"
+		"pg.spi.exec <-function(sql) {.Call(\"plr_SPI_exec\", sql)}"
 
 #define SPI_DBGETQUERY_CMD \
-            "dbGetQuery <-function(sql) {\n" \
-            "data <- pg.spi.exec(sql)\n" \
-            "return(data)\n" \
-            "}"
+		"dbGetQuery <-function(sql) {\n" \
+		"data <- pg.spi.exec(sql)\n" \
+		"return(data)\n" \
+		"}"
 
 #define SPI_PREPARE_CMD \
-            "pg.spi.prepare <-function(sql, argtypes = NA) " \
-            "{.Call(\"plr_SPI_prepare\", sql, argtypes)}"
+		"pg.spi.prepare <-function(sql, argtypes = NA) " \
+		"{.Call(\"plr_SPI_prepare\", sql, argtypes)}"
 
 #define SPI_EXECP_CMD \
-            "pg.spi.execp <-function(sql, argvalues = NA) " \
-            "{.Call(\"plr_SPI_execp\", sql, argvalues)}"
+		"pg.spi.execp <-function(sql, argvalues = NA) " \
+		"{.Call(\"plr_SPI_execp\", sql, argvalues)}"
 
 #define PG_LOG_DEBUG_CMD \
-            "plr.debug <- function(msg) {.Call(\"plr_debug\",msg)}"
+		"plr.debug <- function(msg) {.Call(\"plr_debug\",msg)}"
 #define PG_LOG_LOG_CMD \
-            "plr.log <- function(msg) {.Call(\"plr_log\",msg)}"
+		"plr.log <- function(msg) {.Call(\"plr_log\",msg)}"
 #define PG_LOG_INFO_CMD \
-            "plr.info <- function(msg) {.Call(\"plr_info\",msg)}"
+		"plr.info <- function(msg) {.Call(\"plr_info\",msg)}"
 #define PG_LOG_NOTICE_CMD \
-            "plr.notice <- function(msg) {.Call(\"plr_notice\",msg)}"
+		"plr.notice <- function(msg) {.Call(\"plr_notice\",msg)}"
 #define PG_LOG_WARNING_CMD \
-            "plr.warning <- function(msg) {.Call(\"plr_warning\",msg)}"
+		"plr.warning <- function(msg) {.Call(\"plr_warning\",msg)}"
 #define PG_LOG_ERROR_CMD \
-            "plr.error <- function(msg) {.Call(\"plr_error\",msg)}"
+		"plr.error <- function(msg) {.Call(\"plr_error\",msg)}"
 #define PG_LOG_FATAL_CMD \
-            "plr.fatal <- function(msg) {.Call(\"plr_fatal\",msg)}"
+		"plr.fatal <- function(msg) {.Call(\"plr_fatal\",msg)}"
 
 /* R interface */
 void throw_pg_notice(const char **msg);
