@@ -87,19 +87,19 @@
             "{.Call(\"plr_SPI_execp\", sql, argvalues)}"
 
 #define PG_LOG_DEBUG_CMD \
-    "plr.debug <- function(msg) {.Call(\"plr_debug\",msg)}"
+            "plr.debug <- function(msg) {.Call(\"plr_debug\",msg)}"
 #define PG_LOG_LOG_CMD \
-    "plr.log <- function(msg) {.Call(\"plr_log\",msg)}"
+            "plr.log <- function(msg) {.Call(\"plr_log\",msg)}"
 #define PG_LOG_INFO_CMD \
-    "plr.info <- function(msg) {.Call(\"plr_info\",msg)}"
+            "plr.info <- function(msg) {.Call(\"plr_info\",msg)}"
 #define PG_LOG_NOTICE_CMD \
-    "plr.notice <- function(msg) {.Call(\"plr_notice\",msg)}"
+            "plr.notice <- function(msg) {.Call(\"plr_notice\",msg)}"
 #define PG_LOG_WARNING_CMD \
-    "plr.warning <- function(msg) {.Call(\"plr_warning\",msg)}"
+            "plr.warning <- function(msg) {.Call(\"plr_warning\",msg)}"
 #define PG_LOG_ERROR_CMD \
-    "plr.error <- function(msg) {.Call(\"plr_error\",msg)}"
+            "plr.error <- function(msg) {.Call(\"plr_error\",msg)}"
 #define PG_LOG_FATAL_CMD \
-    "plr.fatal <- function(msg) {.Call(\"plr_fatal\",msg)}"
+            "plr.fatal <- function(msg) {.Call(\"plr_fatal\",msg)}"
 
 /* R interface */
 void throw_pg_notice(const char **msg);
@@ -444,10 +444,10 @@ static char *create_r_func(plcMsgCallreq *req) {
 
 	int i;
 
-	// calculate space required for args
+	/* calculate space required for args */
 	mlen = 5; // for args,
 	for (i = 0; i < req->nargs; i++) {
-		// +4 for , and space
+		/* +4 for , and space */
 		if (req->args[i].name != NULL) {
 			mlen += strlen(req->args[i].name) + 4;
 		}
@@ -459,7 +459,7 @@ static char *create_r_func(plcMsgCallreq *req) {
 
 	mrc = pmalloc(mlen);
 
-	// create the first part of the function name and add the args array
+	/* create the first part of the function name and add the args array */
 	plen = snprintf(mrc, mlen, "%s <- function(args", req->proc.name);
 
 	for (i = 0; i < req->nargs; i++) {
@@ -488,7 +488,7 @@ static char *create_r_func(plcMsgCallreq *req) {
 static int handle_frame(SEXP df, plcRFunction *r_func, plcMsgResult *res) {
 	uint32 row, col, cols;
 
-	// a data frame is an array of columns, the length of which is the number of columns
+	/* a data frame is an array of columns, the length of which is the number of columns */
 	res->cols = 1;
 	cols = length(df);
 	SEXP dfcol = VECTOR_ELT(df, 0);
@@ -839,7 +839,7 @@ static SEXP process_SPI_results() {
 
 	char buf[256];
 
-	receive:
+receive:
 	res = plcontainer_channel_receive(plcconn_global, &resp, MT_CALLREQ_BIT | MT_RESULT_BIT);
 	if (res < 0) {
 		raise_execution_error("Error receiving data from the backend, %d", res);
