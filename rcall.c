@@ -253,13 +253,15 @@ static char *get_load_self_ref_cmd() {
 		lprintf(ERROR, "can not read execute path");
 	}
 
+	lprintf(DEBUG1, "Current R client path is %s", path);
 	if((p = strrchr(path, '/'))) {
 		*(p+1) = '\0';
 	}
 
-	sprintf(buf, "dyn.load(\"%s/%s\")", path, "librcall.so");
+	lprintf(ERROR, "splited path by '/', get the path is %s", path);
+	snprintf(buf, PATH_MAX, "dyn.load(\"%s/%s\")", path, "librcall.so");
 #else
-	sprintf(buf, "dyn.load(\"%s\")", "librcall.so");
+	snprintf(buf, PATH_MAX, "dyn.load(\"%s\")", "librcall.so");
 #endif
 	return buf;
 }
