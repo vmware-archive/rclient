@@ -253,7 +253,7 @@ static char *get_load_self_ref_cmd() {
 		lprintf(ERROR, "can not read execute path");
 	}
 
-	lprintf(DEBUG1, "get path from readlink %s", path);
+	lprintf(DEBUG1, "Current R client path is %s", path);
 	if((p = strrchr(path, '/'))) {
 		*(p+1) = '\0';
 	}
