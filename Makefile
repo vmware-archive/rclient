@@ -25,7 +25,7 @@ PLCONTAINER_DIR = ..
 #CLIENT_CFLAGS = $(shell pkg-config --cflags libR)
 #CLIENT_LDFLAGS = $(shell pkg-config --libs libR)
 CLIENT_CFLAGS = -I${R_HOME}/include
-CLIENT_LDFLAGS = -Wl,--export-dynamic -fopenmp -Wl,-z,relro -L${R_HOME}/lib -lR
+CLIENT_LDFLAGS = -Wl,--export-dynamic -fopenmp -Wl,-z,relro -L${R_HOME}/lib -lR -Wl,-rpath,'$$ORIGIN'
 
 override CFLAGS += $(CUSTOMFLAGS) -I$(PLCONTAINER_DIR)/ -DCOMM_STANDALONE -Wall -Wextra -Werror
 
