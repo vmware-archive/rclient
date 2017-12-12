@@ -246,19 +246,26 @@ static char *get_load_self_ref_cmd() {
 	char *buf = (char *) pmalloc(PATH_MAX);
 
 #ifdef __linux__
-	char   path[PATH_MAX];
-	char   *p;
+	char path[PATH_MAX];
+	char *p = NULL;
+	int size;
 	/* next load the plr library into R */
-	if (readlink("/proc/self/exe", path, PATH_MAX) == -1) {
+	size = readlink("/proc/self/exe", path, PATH_MAX);
+	if (size == -1) {
 		lprintf(ERROR, "can not read execute path");
+	} else {
+		path[size] = '\0';
 	}
 
 	lprintf(DEBUG1, "Current R client path is %s", path);
-	if((p = strrchr(path, '/'))) {
+	p = strrchr(path, '/');
+	if(p) {
 		*(p+1) = '\0';
+	} else {
+		lprintf(ERROR, "can not read execute directory %s", path);
 	}
 
-	lprintf(DEBUG1, "split path by '/'. Get the path: %s", path);
+	lprintf(DEBUG1, "Split path by '/'. Get the path: %s", path);
 	snprintf(buf, PATH_MAX, "dyn.load(\"%s/%s\")", path, "librcall.so");
 #else
 	snprintf(buf, PATH_MAX, "dyn.load(\"%s\")", "librcall.so");
