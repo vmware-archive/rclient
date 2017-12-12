@@ -258,7 +258,7 @@ static char *get_load_self_ref_cmd() {
 		*(p+1) = '\0';
 	}
 
-	lprintf(ERROR, "splited path by '/', get the path is %s", path);
+	lprintf(DEBUG1, "split path by '/'. Get the path: %s", path);
 	snprintf(buf, PATH_MAX, "dyn.load(\"%s/%s\")", path, "librcall.so");
 #else
 	snprintf(buf, PATH_MAX, "dyn.load(\"%s\")", "librcall.so");
