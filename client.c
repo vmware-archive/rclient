@@ -35,7 +35,7 @@ int main(int argc UNUSED, char **argv UNUSED) {
 	sock = start_listener();
 
 	// Initialize R
-	lprintf(LOG, "Client start to listen execution");
+	plc_elog(LOG, "Client start to listen execution");
 	status = r_init();
 
 	connection_wait(sock);
@@ -46,7 +46,7 @@ int main(int argc UNUSED, char **argv UNUSED) {
 		plc_raise_delayed_error(conn);
 	}
 
-	lprintf(LOG, "Client has finished execution");
+	plc_elog(LOG, "Client has finished execution");
 	return 0;
 }
 
