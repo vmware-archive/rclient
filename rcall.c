@@ -203,7 +203,7 @@ int r_init(void) {
 	*/
 	R_SignalHandlers = 0;
 	if (r_home == NULL) {
-		lprintf(ERROR, "R_HOME is not set, please check and set the R_HOME");
+		plc_elog(ERROR, "R_HOME is not set, please check and set the R_HOME");
 		return -1;
 	}
 
@@ -211,7 +211,7 @@ int r_init(void) {
 
 	if (!Rf_initEmbeddedR(rargc, rargv)) {
 		//TODO: return an error
-		lprintf(ERROR, "can not start Embedded R");
+		plc_elog(ERROR, "can not start Embedded R");
 	}
 
 	/*
@@ -252,20 +252,20 @@ static char *get_load_self_ref_cmd() {
 	/* next load the plr library into R */
 	size = readlink("/proc/self/exe", path, PATH_MAX);
 	if (size == -1) {
-		lprintf(ERROR, "can not read execute path");
+		plc_elog(ERROR, "can not read execute path");
 	} else {
 		path[size] = '\0';
 	}
 
-	lprintf(DEBUG1, "Current R client path is %s", path);
+	plc_elog(DEBUG1, "Current R client path is %s", path);
 	p = strrchr(path, '/');
 	if(p) {
 		*(p+1) = '\0';
 	} else {
-		lprintf(ERROR, "can not read execute directory %s", path);
+		plc_elog(ERROR, "can not read execute directory %s", path);
 	}
 
-	lprintf(DEBUG1, "Split path by '/'. Get the path: %s", path);
+	plc_elog(DEBUG1, "Split path by '/'. Get the path: %s", path);
 	snprintf(buf, PATH_MAX, "dyn.load(\"%s/%s\")", path, "librcall.so");
 #else
 	snprintf(buf, PATH_MAX, "dyn.load(\"%s\")", "librcall.so");
@@ -318,7 +318,7 @@ void handle_call(plcMsgCallreq *req, plcConn *conn) {
 		*errmsg;
 
 
-	lprintf(DEBUG1, "R client receives a call");
+	plc_elog(DEBUG1, "R client receives a call");
 	/*
 	 * Keep our connection for future calls from R back to us.
 	*/
@@ -375,7 +375,7 @@ void handle_call(plcMsgCallreq *req, plcConn *conn) {
 	plc_r_free_function(r_func);
 
 	UNPROTECT(3); //r, strres, call
-	lprintf(DEBUG1, "R client finished processing this call");
+	plc_elog(DEBUG1, "R client finished processing this call");
 
 	return;
 }
@@ -1195,7 +1195,7 @@ void raise_execution_error(const char *format, ...) {
 		if (res < 0 || res >= len) {
 			msg = strdup("Error formatting error message string in raise_execution_error()");
 		}
-		lprintf(WARNING, "R client caught an error: %s", msg);
+		plc_elog(WARNING, "R client caught an error: %s", msg);
 	}
 
 	if (plcLastErrMessage == NULL && plc_is_execution_terminated == 0) {
@@ -1211,8 +1211,8 @@ void raise_execution_error(const char *format, ...) {
 		plcLastErrMessage = err;
 		plc_raise_delayed_error(plcconn_global);
 	} else {
-		lprintf(WARNING, "Cannot send second subsequent error message to backend:");
-		lprintf(WARNING, "%s", msg);
+		plc_elog(WARNING, "Cannot send second subsequent error message to backend:");
+		plc_elog(WARNING, "%s", msg);
 		free(msg);
 	}
 
@@ -1226,7 +1226,7 @@ void plc_raise_delayed_error(plcConn *conn) {
 			plcLastErrMessage = NULL;
 			plc_is_execution_terminated = 1;
 		} else if (conn == NULL) {
-			lprintf(ERROR, "client caught an error: %s", plcLastErrMessage->message);
+			plc_elog(ERROR, "client caught an error: %s", plcLastErrMessage->message);
 		}
 	}
 }
@@ -1250,7 +1250,7 @@ SEXP
 pg_protect(SEXP s, char *fn, int ln)
 {
 	balance++;
-	lprintf(NOTICE, "%d\tPROTECT\t1\t%s\t%d", balance, fn, ln);
+	plc_elog(NOTICE, "%d\tPROTECT\t1\t%s\t%d", balance, fn, ln);
 	return protect(s);
 }
 
@@ -1258,7 +1258,7 @@ void
 pg_unprotect(int n, char *fn, int ln)
 {
 	balance=balance-n;
-	lprintf(NOTICE, "%d\tUNPROTECT\t%d\t%s\t%d", balance, n, fn, ln);
+	plc_elog(NOTICE, "%d\tUNPROTECT\t%d\t%s\t%d", balance, n, fn, ln);
 	unprotect(n);
 }
 #endif /* DEBUGPROTECT */
