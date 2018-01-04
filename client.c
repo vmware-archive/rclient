@@ -31,7 +31,7 @@ int main(int argc UNUSED, char **argv UNUSED) {
 	/* do not overwrite, if the CLIENT_NAME has already set */
 	setenv("CLIENT_LANGUAGE", "rclient", 0);
 
-	log_min_messages = LOG;
+	client_log_level = LOG;
 
 	// Bind the socket and start listening the port
 	sock = start_listener();
