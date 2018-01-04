@@ -317,7 +317,7 @@ void handle_call(plcMsgCallreq *req, plcConn *conn) {
 	char *func,
 		*errmsg;
 
-
+	log_min_messages = req->logLevel;
 	plc_elog(DEBUG1, "R client receives a call");
 	/*
 	 * Keep our connection for future calls from R back to us.
