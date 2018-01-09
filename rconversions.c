@@ -467,7 +467,11 @@ static int plc_r_object_as_float8(SEXP input, char **output, plcRType *type UNUS
 static int plc_r_object_as_text(SEXP input, char **output, plcRType *type UNUSED) {
 	int res = 0;
 
-	*output = strdup(CHAR(asChar(input)));
+	if (asChar(input) == NA_STRING)
+		*output = strdup("");
+	else
+		*output = strdup(CHAR(asChar(input)));
+
 	return res;
 }
 
