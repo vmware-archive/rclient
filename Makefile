@@ -8,7 +8,7 @@
 ifeq (,${R_HOME})
 #R_HOME is not defined
 
-default all clean build librcall.so:
+default all clean librcall.so:
 	@echo ""; \
 	 echo "*** Cannot build PL/Container R client because R_HOME cannot be found." ; \
 	 echo "*** Refer to the documentation for details."; \
@@ -27,7 +27,8 @@ PLCONTAINER_DIR = ..
 CLIENT_CFLAGS = -I${R_HOME}/include
 CLIENT_LDFLAGS = -Wl,--export-dynamic -fopenmp -Wl,-z,relro -L${R_HOME}/lib -lR -Wl,-rpath,'$$ORIGIN'
 
-override CFLAGS += $(CUSTOMFLAGS) -I$(PLCONTAINER_DIR)/ -DPLC_CLIENT -Wall -Wextra -Werror
+override CFLAGS += $(CLIENT_CFLAGS) -I$(PLCONTAINER_DIR)/ -DPLC_CLIENT -Wall -Wextra -Werror
+override LDFLAGS += $(CLIENT_LDFLAGS)
 
 CLIENT = rclient
 common_src = $(shell find $(PLCONTAINER_DIR)/common -name "*.c")
@@ -38,24 +39,22 @@ shared_src = rcall.c rconversions.c rlogging.c
 default: all
 
 %.o: %.c
-	$(CC) $(CLIENT_CFLAGS) $(CFLAGS) -c -o $@ $^
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 $(common_objs): %.$(CLIENT).o: %.c
-	$(CC) $(CLIENT_CFLAGS) $(CFLAGS) -c -o $@ $^
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 librcall.so: $(shared_src)
-	$(CC) $(CLIENT_CFLAGS) $(CFLAGS) -fpic -c $(shared_src) $^
-	$(CC) -shared -o librcall.so rcall.o rconversions.o rlogging.o
+	$(CC) $(CFLAGS) -fpic -c $(shared_src) $^
+	$(CC) -shared $(LDFLAGS) -o librcall.so rcall.o rconversions.o rlogging.o
 	cp librcall.so bin
 
-build: client.o librcall.so $(common_objs)
-	$(CC) -o $(CLIENT) $^ $(CLIENT_LDFLAGS)
+.PHONY: all
+all: client.o librcall.so $(common_objs)
+	$(CC) -o $(CLIENT) $^ $(LDFLAGS)
 	cp $(CLIENT) bin
 
-.PHONY: all
-all: CUSTOMFLAGS = -O3 -g
-all: build
-
+.PHONY: clean
 clean:
 	rm -f $(common_objs)
 	rm -f librcall.so
