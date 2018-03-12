@@ -34,19 +34,31 @@ CLIENT = rclient
 common_src = $(shell find $(PLCONTAINER_DIR)/common -name "*.c")
 common_objs = $(foreach src,$(common_src),$(subst .c,.$(CLIENT).o,$(src)))
 shared_src = rcall.c rconversions.c rlogging.c
+shared_objs = $(foreach src,$(shared_src),$(subst .c,.o,$(src)))
 
 .PHONY: default
 default: all
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $^
+# add auto dependency for common src used by pyclient, reference to the following link:
+# http://wiki.ubuntu.org.cn/%E8%B7%9F%E6%88%91%E4%B8%80%E8%B5%B7%E5%86%99Makefile:%E4%B9%A6%E5%86%99%E8%A7%84%E5%88%99#.E8.87.AA.E5.8A.A8.E7.94.9F.E6.88.90.E4.BE.9D.E8.B5.96.E6.80.A7
+common_dep = $(foreach src,$(common_src),$(subst .c,.$(CLIENT).d,$(src)))
+$(common_dep): $(common_src)
+	@set -e; rm -f $@; $(CC) -M $(CFLAGS) $< > $@.$$$$; sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; rm -f $@.$$$$
+$(common_objs): %.$(CLIENT).o: %.c $(common_dep)
+	$(CC)  $(CFLAGS) -c -o $@ $<
 
-$(common_objs): %.$(CLIENT).o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $^
+# add auto dependency for rclient Makefile, reference to the following link:
+# http://make.mad-scientist.net/papers/advanced-auto-dependency-generation/#combine
+DEPDIR := .d
+$(shell mkdir -p $(DEPDIR) >/dev/null)
+DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
+POSTCOMPILE = @mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
+$(shared_objs): %.o: %.c $(DEPDIR)/%.d
+	$(CC) $(DEPFLAGS) $(CFLAGS) -fpic -c -o $@ $<
+	$(POSTCOMPILE)
 
-librcall.so: $(shared_src)
-	$(CC) $(CFLAGS) -fpic -c $(shared_src) $^
-	$(CC) -shared $(LDFLAGS) -o librcall.so rcall.o rconversions.o rlogging.o
+librcall.so: $(shared_objs)
+	$(CC) -shared $(LDFLAGS) -o librcall.so $(shared_objs)
 	cp librcall.so bin
 
 .PHONY: all
@@ -62,5 +74,11 @@ clean:
 	rm -f *.o
 	rm -f $(CLIENT)
 	rm -f bin/$(CLIENT)
+	rm -f $(common_dep)
+	rm -rf $(DEPDIR)
 
+$(DEPDIR)/%.d: ;
+.PRECIOUS: $(DEPDIR)/%.d
+
+include $(wildcard $(patsubst %,$(DEPDIR)/%.d,$(basename $(shared_src))))
 endif # R_HOME check
