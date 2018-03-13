@@ -3,3 +3,4 @@
 /bin/rclient
 /bin/*.so
 *.o
+*.d
