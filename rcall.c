@@ -851,16 +851,18 @@ static SEXP process_SPI_results() {
 	char buf[256];
 
 receive:
-	res = plcontainer_channel_receive(plcconn_global, &resp, MT_CALLREQ_BIT | MT_RESULT_BIT| MT_EXCEPTION_BIT);
+	res = plcontainer_channel_receive(plcconn_global, &resp, MT_PING_BIT | MT_CALLREQ_BIT | MT_RESULT_BIT| MT_EXCEPTION_BIT);
 	if (res < 0) {
 		raise_execution_error("Error receiving data from the backend, %d", res);
 		return NULL;
 	}
-
 	switch (resp->msgtype) {
 		case MT_CALLREQ:
 			handle_call((plcMsgCallreq *) resp, plcconn_global);
 			free_callreq((plcMsgCallreq *) resp, false, false);
+			goto receive;
+		case MT_PING:
+			plcontainer_channel_send(plcconn_global, resp);
 			goto receive;
 		case MT_EXCEPTION:
 			if (((plcMsgError *) resp)->message != NULL) {
@@ -1066,7 +1068,7 @@ SEXP plr_SPI_prepare(SEXP rsql, SEXP rargtypes) {
 	plcontainer_channel_send(conn, (plcMessage *) &msg);
 	free_arguments(msg.args, msg.nargs, false, false);
 
-	res = plcontainer_channel_receive(conn, &resp, MT_RAW_BIT|MT_EXCEPTION_BIT);
+	res = plcontainer_channel_receive(conn, &resp, MT_RAW_BIT | MT_EXCEPTION_BIT);
 
 	if (resp->msgtype == MT_EXCEPTION) {
 			if (((plcMsgError *) resp)->message != NULL) {
