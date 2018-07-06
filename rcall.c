@@ -33,8 +33,6 @@
 #include "rconversions.h"
 #include "rlogging.h"
 
-#define ERR_MSG_LENGTH 512
-
 #if (R_VERSION >= 132352) /* R_VERSION >= 2.5.0 */
 #define R_PARSEVECTOR(a_, b_, c_)  R_ParseVector(a_, b_, (ParseStatus *) c_, R_NilValue)
 #else /* R_VERSION < 2.5.0 */
@@ -851,7 +849,7 @@ static SEXP process_SPI_results() {
 	char buf[256];
 
 receive:
-	res = plcontainer_channel_receive(plcconn_global, &resp, MT_CALLREQ_BIT | MT_RESULT_BIT| MT_EXCEPTION_BIT);
+	res = plcontainer_channel_receive(plcconn_global, &resp, MT_CALLREQ_BIT | MT_RESULT_BIT);
 	if (res < 0) {
 		raise_execution_error("Error receiving data from the backend, %d", res);
 		return NULL;
@@ -862,13 +860,7 @@ receive:
 			handle_call((plcMsgCallreq *) resp, plcconn_global);
 			free_callreq((plcMsgCallreq *) resp, false, false);
 			goto receive;
-		case MT_EXCEPTION:
-			if (((plcMsgError *) resp)->message != NULL) {
-				raise_execution_error("SPI process_SPI_results failed due to %s", ((plcMsgError *) resp)->message);
-			} else {
-				raise_execution_error("SPI process_SPI_results failed.");
-			}
-			break;
+
 		case MT_RESULT:
 			break;
 		default:
@@ -1066,15 +1058,8 @@ SEXP plr_SPI_prepare(SEXP rsql, SEXP rargtypes) {
 	plcontainer_channel_send(conn, (plcMessage *) &msg);
 	free_arguments(msg.args, msg.nargs, false, false);
 
-	res = plcontainer_channel_receive(conn, &resp, MT_RAW_BIT|MT_EXCEPTION_BIT);
+	res = plcontainer_channel_receive(conn, &resp, MT_RAW_BIT);
 
-	if (resp->msgtype == MT_EXCEPTION) {
-			if (((plcMsgError *) resp)->message != NULL) {
-				raise_execution_error("SPI process_SPI_results failed due to %s", ((plcMsgError *) resp)->message);
-			} else {
-				raise_execution_error("SPI process_SPI_results failed.");
-			}
-	}
 	if (res < 0) {
 		raise_execution_error("Error receiving data from the frontend, %d", res);
 		return NULL;
@@ -1204,7 +1189,7 @@ void raise_execution_error(const char *format, ...) {
 		int len, res;
 
 		va_start(args, format);
-		len = ERR_MSG_LENGTH + 2 * strlen(format);
+		len = 100 + 2 * strlen(format);
 		msg = (char *) malloc(len + 1);
 		res = vsnprintf(msg, len, format, args);
 		if (res < 0 || res >= len) {
