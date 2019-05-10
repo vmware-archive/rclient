@@ -466,12 +466,12 @@ static char *create_r_func(plcMsgCallreq *req) {
 	/*
 	 * room for function source and function call
 	 */
-	mlen += strlen(req->proc.src) + strlen(req->proc.name) + 40;
+	mlen += strlen(req->proc.src) + strlen(req->proc.name) + 40 + strlen("gpdb.");
 
 	mrc = pmalloc(mlen);
 
 	/* create the first part of the function name and add the args array */
-	plen = snprintf(mrc, mlen, "%s <- function(args", req->proc.name);
+	plen = snprintf(mrc, mlen, "gpdb.%s <- function(args", req->proc.name);
 
 	for (i = 0; i < req->nargs; i++) {
 
