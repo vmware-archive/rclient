@@ -41,7 +41,7 @@ PLCONTAINER_DIR = ..
 CLIENT_CFLAGS = $(r_includespec)
 CLIENT_LDFLAGS = -Wl,--export-dynamic -fopenmp -Wl,-z,relro -L${r_libdir2x} -lR -Wl,-rpath,'$$ORIGIN'
 
-override CFLAGS += $(CLIENT_CFLAGS) -I$(PLCONTAINER_DIR)/ -DPLC_CLIENT -Wall -Wextra -Werror
+override CFLAGS += $(CLIENT_CFLAGS) -I$(PLCONTAINER_DIR)/ -DPLC_CLIENT -Wall -Wextra -Werror -Wno-unused-result
 override LDFLAGS += $(CLIENT_LDFLAGS)
 
 CLIENT = rclient
