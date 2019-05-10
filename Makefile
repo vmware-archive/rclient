@@ -5,6 +5,20 @@
 #
 #------------------------------------------------------------------------------
 
+ifdef R_HOME
+r_libdir1x = ${R_HOME}/bin
+r_libdir2x = ${R_HOME}/lib
+# location of R includes
+r_includespec = -I${R_HOME}/include
+rhomedef = ${R_HOME}
+else
+R_HOME := $(shell pkg-config --variable=rhome libR)
+r_libdir1x := $(shell pkg-config --variable=rlibdir libR)
+r_libdir2x := $(shell pkg-config --variable=rlibdir libR)
+r_includespec := $(shell pkg-config --cflags-only-I libR)
+rhomedef := $(shell pkg-config --variable=rhome libR)
+endif
+
 ifeq (,${R_HOME})
 #R_HOME is not defined
 
@@ -24,8 +38,8 @@ PLCONTAINER_DIR = ..
 # R build flags
 #CLIENT_CFLAGS = $(shell pkg-config --cflags libR)
 #CLIENT_LDFLAGS = $(shell pkg-config --libs libR)
-CLIENT_CFLAGS = -I${R_HOME}/include
-CLIENT_LDFLAGS = -Wl,--export-dynamic -fopenmp -Wl,-z,relro -L${R_HOME}/lib -lR -Wl,-rpath,'$$ORIGIN'
+CLIENT_CFLAGS = $(r_includespec)
+CLIENT_LDFLAGS = -Wl,--export-dynamic -fopenmp -Wl,-z,relro -L${r_libdir2x} -lR -Wl,-rpath,'$$ORIGIN'
 
 override CFLAGS += $(CLIENT_CFLAGS) -I$(PLCONTAINER_DIR)/ -DPLC_CLIENT -Wall -Wextra -Werror
 override LDFLAGS += $(CLIENT_LDFLAGS)
