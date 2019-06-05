@@ -823,6 +823,7 @@ static void pg_get_one_r(char *value, plcDatatype column_type, SEXP *obj, int el
 				SET_STRING_ELT(*obj, elnum, mkCharLen(value + 4, bsize));
 				break;
 			}
+			// fallthrough
 		case PLC_DATA_TEXT:
 		default:
 			/* Everything else is defaulted to string */
