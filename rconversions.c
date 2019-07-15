@@ -274,10 +274,11 @@ static SEXP plc_r_object_from_udt(char *input, plcRType *type) {
 			UNPROTECT(1);
 
 		} else {
-			res = R_NilValue;
+			res = R_NilValue; // TODO: allow NULL fields.
 			break;
 		}
 	}
+	//TODO: check attribute lists
 	/* attach the column names */
 	setAttrib(res, R_NamesSymbol, names);
 	UNPROTECT(1); //names

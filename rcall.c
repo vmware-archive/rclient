@@ -676,28 +676,38 @@ static int process_call_results(plcConn *conn, SEXP retval, plcRFunction *r_func
 		plc_r_copy_type(&res->types[0], &r_func->res);
 		res->names[0] = strdup(r_func->res.argName);
 
+		plc_elog(DEBUG1, "retval is null = %d", retval == R_NilValue);
 		if (retval == R_NilValue) {
 			res->data[0][0].isnull = 1;
 			res->data[0][0].value = NULL;
-
+			plc_elog(DEBUG1, "returing R_NilValue");
 		} else {
 			for (i = 0; i < res->rows; i++) {
+				if ((retval == R_NilValue)
+					|| ((TYPEOF(retval) == LGLSXP) && (asLogical(retval) == NA_LOGICAL))
+					|| ((TYPEOF(retval) == INTSXP) && (asInteger(retval) == NA_INTEGER))
+					|| ((TYPEOF(retval) == REALSXP) && (asInteger(retval) == NA_REAL))
+					|| ((TYPEOF(retval) == STRSXP) && (retval == NA_STRING))) {
+					res->data[i][0].isnull = 1;
+					res->data[i][0].value = NULL;
+					ret = 0;
+				} else {
+					res->data[i][0].isnull = 0;
+					if (r_func->res.conv.outputfunc == NULL) {
+						raise_execution_error("Type %d is not yet supported by R container",
+											(int) res->types[0].type);
+						free_result(res, true);
+						return -1;
+					}
 
-				res->data[i][0].isnull = 0;
-				if (r_func->res.conv.outputfunc == NULL) {
-					raise_execution_error("Type %d is not yet supported by R container",
-					                      (int) res->types[0].type);
-					free_result(res, true);
-					return -1;
-				}
-
-				ret = r_func->res.conv.outputfunc(retval, &res->data[i][0].value, &r_func->res);
-
-				if (ret != 0) {
-					raise_execution_error("Exception raised converting function output to function output type %d",
-					                      (int) res->types[0].type);
-					free_result(res, true);
-					return -1;
+					ret = r_func->res.conv.outputfunc(retval, &res->data[i][0].value, &r_func->res);
+					plc_elog(DEBUG1, "returing value = %d", *(int *)(res->data[i][0].value));
+					if (ret != 0) {
+						raise_execution_error("Exception raised converting function output to function output type %d",
+											(int) res->types[0].type);
+						free_result(res, true);
+						return -1;
+					}
 				}
 			}
 		}
@@ -730,7 +740,7 @@ static SEXP arguments_to_r(plcRFunction *r_func) {
 	r_curarg = CDR(r_curarg);
 
 	for (i = 0; i < r_func->nargs; i++) {
-
+		plc_elog(DEBUG1, "arg is null = %d, data = %p", r_func->call->args[i].data.isnull, (r_func->call->args[i].data.value));
 		if (r_func->call->args[i].data.isnull) {
 			PROTECT(element = R_NilValue);
 		} else {
