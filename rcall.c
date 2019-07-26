@@ -682,22 +682,31 @@ static int process_call_results(plcConn *conn, SEXP retval, plcRFunction *r_func
 
 		} else {
 			for (i = 0; i < res->rows; i++) {
+				if ((retval == R_NilValue)
+					|| ((TYPEOF(retval) == LGLSXP) && (asLogical(retval) == NA_LOGICAL))
+					|| ((TYPEOF(retval) == INTSXP) && (asInteger(retval) == NA_INTEGER))
+					|| ((TYPEOF(retval) == REALSXP) && (asInteger(retval) == NA_REAL))
+					|| ((TYPEOF(retval) == STRSXP) && (retval == NA_STRING))) {
+					res->data[i][0].isnull = 1;
+					res->data[i][0].value = NULL;
+					ret = 0;
+				} else {
+					res->data[i][0].isnull = 0;
+					if (r_func->res.conv.outputfunc == NULL) {
+						raise_execution_error("Type %d is not yet supported by R container",
+											(int) res->types[0].type);
+						free_result(res, true);
+						return -1;
+					}
 
-				res->data[i][0].isnull = 0;
-				if (r_func->res.conv.outputfunc == NULL) {
-					raise_execution_error("Type %d is not yet supported by R container",
-					                      (int) res->types[0].type);
-					free_result(res, true);
-					return -1;
-				}
+					ret = r_func->res.conv.outputfunc(retval, &res->data[i][0].value, &r_func->res);
 
-				ret = r_func->res.conv.outputfunc(retval, &res->data[i][0].value, &r_func->res);
-
-				if (ret != 0) {
-					raise_execution_error("Exception raised converting function output to function output type %d",
-					                      (int) res->types[0].type);
-					free_result(res, true);
-					return -1;
+					if (ret != 0) {
+						raise_execution_error("Exception raised converting function output to function output type %d",
+											(int) res->types[0].type);
+						free_result(res, true);
+						return -1;
+					}
 				}
 			}
 		}
