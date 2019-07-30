@@ -632,12 +632,17 @@ static int handle_retset(SEXP retval, plcRFunction *r_func, plcMsgResult *res) {
 				free_result(res, true);
 				return -1;
 			}
-			raw = plc_r_vector_element_rawdata(retval, i, &r_func->res);
+			raw = plc_r_vector_element_rawdata(retval, i, r_func->res.subTypes);
 			if (raw == NULL) {
 				free_result(res, true);
 				return -1;
 			} else {
-				res->data[i] = raw;
+                rawdata *item = malloc(sizeof(rawdata));
+                plcUDT *udt = malloc(sizeof(plcUDT));
+                item->isnull = 0;
+                item->value = (char*)udt;
+                udt->data = raw;
+				res->data[i] = item;
 			}
 
 		}
@@ -1219,6 +1224,7 @@ void raise_execution_error(const char *format, ...) {
 		len = ERR_MSG_LENGTH + 2 * strlen(format);
 		msg = (char *) malloc(len + 1);
 		res = vsnprintf(msg, len, format, args);
+		va_end(args);
 		if (res < 0 || res >= len) {
 			msg = strdup("Error formatting error message string in raise_execution_error()");
 		}
