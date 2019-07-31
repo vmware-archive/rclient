@@ -562,8 +562,8 @@ static int handle_frame(SEXP df, plcRFunction *r_func, plcMsgResult *res) {
 }
 
 static int handle_matrix_set(SEXP retval, plcRFunction *r_func, plcMsgResult *res) {
-	int cols, start = 0;
-	uint32 i;
+	int cols= 0;
+	int i, j;
 	SEXP rdims;
 	PROTECT(rdims = getAttrib(retval, R_DimSymbol));
 	// get the number of rows
@@ -578,24 +578,31 @@ static int handle_matrix_set(SEXP retval, plcRFunction *r_func, plcMsgResult *re
 
 	// this is a matrix of vectors but we only handle one column in set of right now
 	res->cols = 1;
-	res->data = malloc(res->rows * sizeof(rawdata *));
+	res->data = pmalloc(res->rows * sizeof(rawdata *));
 
-	for (i = 0; i < res->rows; i++) {
-		res->data[i] = malloc(cols * sizeof(rawdata));
-	}
 	plc_r_copy_type(&res->types[0], &r_func->res);
 	res->names[0] = strdup(r_func->res.argName);
 
-	start = 0;
+	for (i = 0; i < (int) res->rows; i++) {
+		plcUDT *udt;
 
-	for (i = 0; i < res->rows; i++) {
-		res->data[i][0].isnull = 0;
-		if (plc_r_matrix_as_setof(retval, start, cols, &res->data[i][0].value, &r_func->res) != 0) {
-			free_result(res, true);
-			return -1;
+		res->data[i] = pmalloc(sizeof(rawdata));
+
+		udt = pmalloc(sizeof(plcUDT));
+		udt->data = pmalloc(cols * sizeof(rawdata));
+
+		for(j = 0; j < cols; j++)
+		{
+			int idx = res->rows * j + i;
+			rawdata *data = plc_r_vector_element_rawdata(retval, idx, &r_func->res.subTypes[0]);
+			udt->data[j].isnull = data->isnull;
+			udt->data[j].value = data->value;
+			free(data);
 		}
-		start = start + cols;
+		res->data[i]->value = (char *)udt;
+		res->data[i]->isnull = FALSE;
 	}
+
 	return 0;
 }
 
@@ -657,7 +664,6 @@ static int process_call_results(plcConn *conn, SEXP retval, plcRFunction *r_func
 	res->names = malloc(1 * sizeof(char *));
 	res->types = malloc(1 * sizeof(plcType));
 	res->exception_callback = NULL;
-
 
 	if (r_func->retset != 0) {
 		if (handle_retset(retval, r_func, res) != 0) {

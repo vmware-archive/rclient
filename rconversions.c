@@ -56,6 +56,8 @@ static void plc_r_object_iter_free(plcIterator *iter);
 
 static rawdata *plc_r_object_as_array_next(plcIterator *iter);
 
+static rawdata *plc_r_matrix_object_as_array_next(plcIterator *iter);
+
 static plcRInputFunc plc_get_input_function(plcDatatype dt, bool isArrayElement);
 
 static void plc_parse_type(plcRType *Rtype, plcType *type, char *argName, bool isArrayElement);
@@ -661,109 +663,55 @@ static rawdata *plc_r_object_as_array_next(plcIterator *iter) {
 	plcRArrPointer *ptrs;
 	rawdata *res;
 	SEXP mtx;
-	int ptr;
 	int idx;
 
 	meta = (plcRArrMeta *) iter->payload;
 	ptrs = (plcRArrPointer *) iter->position;
 
-	ptr = meta->ndims - 1;
-	idx = ptrs[ptr].pos;
-	mtx = ptrs[ptr].obj;
+	idx = ptrs->pos;
+	mtx = ptrs->obj;
 
 	res = plc_r_vector_element_rawdata(mtx, idx, meta->type);
-	ptrs[ptr].pos += 1;
+	ptrs->pos += 1;
 
 	return res;
 }
 
-int plc_r_matrix_as_setof(SEXP input, int start, int dim1, char **output, plcRType *type) {
-
+static rawdata *plc_r_matrix_object_as_array_next(plcIterator *iter) {
 	plcRArrMeta *meta;
-	plcArrayMeta *arrmeta;
-	plcIterator *iter;
-	size_t dims[PLC_MAX_ARRAY_DIMS];
-	SEXP rdims;
-	int ndims = 0;
-	int res = 0;
-	int i = 0;
 	plcRArrPointer *ptrs;
+	rawdata *res;
+	SEXP mtx;
+	int idx;
 
-	if (input != R_NilValue && (isVector(input) || isMatrix(input))) {
-		PROTECT(rdims = getAttrib(input, R_DimSymbol));
+	meta = (plcRArrMeta *) iter->payload;
+	ptrs = (plcRArrPointer *) iter->position;
 
-		/*
-		 * we are translating this from a linear array into n rows
-		 * so we lose one of the dimensions
-		 */
+	idx = ptrs->px * ptrs->nr + ptrs->py;
+	mtx = ptrs->obj;
 
-		if (rdims != R_NilValue) {
-			ndims = 1;
-			dims[0] = dim1;
-		} else {
-			ndims = 1;
-			dims[0] = dim1;
-		}
-		UNPROTECT(1);
+	res = plc_r_vector_element_rawdata(mtx, idx, meta->type);
 
-
-		/* Allocate the iterator */
-		iter = (plcIterator *) pmalloc(sizeof(plcIterator));
-
-		/* Initialize metas */
-		arrmeta = (plcArrayMeta *) pmalloc(sizeof(plcArrayMeta));
-		arrmeta->ndims = ndims;
-		arrmeta->dims = (int *) pmalloc(ndims * sizeof(int));
-		arrmeta->size = (ndims == 0) ? 0 : 1;
-		arrmeta->type = type->subTypes[0].type;
-
-		meta = (plcRArrMeta *) pmalloc(sizeof(plcRArrMeta));
-		meta->ndims = ndims;
-		meta->dims = (size_t *) pmalloc(ndims * sizeof(size_t));
-		meta->outputfunc = plc_get_output_function(type->subTypes[0].type);
-		meta->type = &type->subTypes[0];
-
-		for (i = 0; i < ndims; i++) {
-			meta->dims[i] = dims[i];
-			arrmeta->dims[i] = (int) dims[i];
-			arrmeta->size *= (int) dims[i];
-		}
-
-		iter->meta = arrmeta;
-		iter->payload = (char *) meta;
-
-		/* Initializing initial position */
-		ptrs = (plcRArrPointer *) pmalloc(ndims * sizeof(plcRArrPointer));
-		for (i = 0; i < ndims; i++) {
-			ptrs[i].pos = start;
-			/* TODO this only works for one dimensional arrays */
-			ptrs[i].obj = input;
-		}
-		iter->position = (char *) ptrs;
-
-		/* not sure why this is necessary */
-		/* Initializing "data" */
-		iter->data = (char *) input;
-
-		/* Initializing "next" and "cleanup" functions */
-		iter->next = plc_r_object_as_array_next;
-		iter->cleanup = plc_r_object_iter_free;
-
-		*output = (char *) iter;
-
-
-	} else {
-		*output = NULL;
-		return -1;
+	if(ptrs->px == (ptrs->nc - 1))
+	{
+		/* reset the px to the origin point (0) */
+		ptrs->px = 0;
+		ptrs->py += 1;
 	}
+	else
+	{
+		ptrs->px += 1;
+	}
+	ptrs->pos += 1;
+
 	return res;
 }
 
 static int plc_r_object_as_array(SEXP input, char **output, plcRType *type) {
-	plcRArrMeta *meta;
-	plcArrayMeta *arrmeta;
-	plcIterator *iter;
-	size_t dims[PLC_MAX_ARRAY_DIMS];
+	plcRArrMeta *meta = NULL;
+	plcArrayMeta *arrmeta = NULL;
+	plcIterator *iter = NULL;
+	size_t *dims = NULL;
 	SEXP rdims;
 	int ndims = 0;
 	int res = 0;
@@ -774,14 +722,18 @@ static int plc_r_object_as_array(SEXP input, char **output, plcRType *type) {
 	if (input != R_NilValue && (isVector(input) || isMatrix(input))) {
 		/* TODO this is just for vectors */
 
+		/* Init dims firstly */
+
 		PROTECT(rdims = getAttrib(input, R_DimSymbol));
 		if (rdims != R_NilValue) {
 			ndims = length(rdims);
+			dims = (size_t *) pmalloc(ndims * sizeof(int));
 			for (i = 0; i < ndims; i++) {
 				dims[i] = INTEGER(rdims)[i];
 			}
 		} else {
 			ndims = 1;
+			dims = (size_t *) pmalloc(1 * sizeof(int));
 			dims[0] = length(input);
 		}
 		UNPROTECT(1);
@@ -804,6 +756,7 @@ static int plc_r_object_as_array(SEXP input, char **output, plcRType *type) {
 		meta->type = &type->subTypes[0];
 
 		for (i = 0; i < ndims; i++) {
+			plc_elog(DEBUG1, "current dim is %d, vaule is %ld", i, dims[i]);
 			meta->dims[i] = dims[i];
 			arrmeta->dims[i] = (int) dims[i];
 			arrmeta->size *= (int) dims[i];
@@ -813,20 +766,29 @@ static int plc_r_object_as_array(SEXP input, char **output, plcRType *type) {
 		iter->payload = (char *) meta;
 
 		/* Initializing initial position */
-		ptrs = (plcRArrPointer *) pmalloc(ndims * sizeof(plcRArrPointer));
-		for (i = 0; i < ndims; i++) {
-			ptrs[i].pos = 0;
-			/* TODO this only works for one dimensional arrays */
-			ptrs[i].obj = input;
+		ptrs = (plcRArrPointer *) pmalloc(sizeof(plcRArrPointer));
+		ptrs->pos = 0;
+		ptrs->obj = input;
+
+		/* matrix need to process specifically */
+		if (isMatrix(input))
+		{
+			ptrs->nr = dims[0];
+			ptrs->nc = dims[1];
+			ptrs->px = 0;
+			ptrs->py = 0;
 		}
 		iter->position = (char *) ptrs;
 
-		/* not sure why this is necessary */
-		/* Initializing "data" */
-		iter->data = (char *) input;
-
 		/* Initializing "next" and "cleanup" functions */
-		iter->next = plc_r_object_as_array_next;
+		if (isMatrix(input))
+		{
+			iter->next = plc_r_matrix_object_as_array_next;
+		}
+		else
+		{
+			iter->next = plc_r_object_as_array_next;
+		}
 		iter->cleanup = plc_r_object_iter_free;
 
 		*output = (char *) iter;
