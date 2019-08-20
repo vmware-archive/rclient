@@ -41,11 +41,12 @@ PLCONTAINER_DIR = ..
 CLIENT_CFLAGS = $(r_includespec)
 CLIENT_LDFLAGS = -Wl,--export-dynamic -fopenmp -Wl,-z,relro -L${r_libdir2x} -lR -Wl,-rpath,'$$ORIGIN'
 
-override CFLAGS += $(CLIENT_CFLAGS) -I$(PLCONTAINER_DIR)/ -DPLC_CLIENT -Wall -Wextra -Werror -Wno-unused-result
+override CFLAGS += -std=gnu99 $(CLIENT_CFLAGS) -I$(PLCONTAINER_DIR)/ -DPLC_CLIENT -Wall -Wextra -Werror -Wno-unused-result
 override LDFLAGS += $(CLIENT_LDFLAGS)
 
 CLIENT = rclient
-common_src = $(shell find $(PLCONTAINER_DIR)/common -name "*.c")
+common_src = ../common/comm_channel.c ../common/comm_connectivity.c ../common/comm_messages.c \
+             ../server/server.c ../server/server_misc.c
 common_objs = $(foreach src,$(common_src),$(subst .c,.$(CLIENT).o,$(src)))
 shared_src = rcall.c rconversions.c rlogging.c
 shared_objs = $(foreach src,$(shared_src),$(subst .c,.o,$(src)))

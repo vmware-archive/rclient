@@ -9,6 +9,8 @@
 
 #include <R.h>
 
+#include "server/server_misc.h"
+
 SEXP plr_debug(SEXP args);
 
 SEXP plr_log(SEXP args);

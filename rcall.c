@@ -26,9 +26,8 @@
 /* PL/Container header files */
 #include "common/comm_channel.h"
 #include "common/messages/messages.h"
-#include "common/comm_utils.h"
 #include "common/comm_connectivity.h"
-#include "common/comm_server.h"
+#include "server/server_misc.h"
 #include "rcall.h"
 #include "rconversions.h"
 #include "rlogging.h"
@@ -119,9 +118,9 @@ static char *get_load_self_ref_cmd(void);
 
 static int load_r_cmd(const char *cmd);
 
-static void send_error(plcConn *conn, char *msg);
+static void send_error(char *msg);
 
-static SEXP parse_r_code(const char *code, plcConn *conn, int *errorOccurred);
+static SEXP parse_r_code(const char *code, int *errorOccurred);
 
 static char *create_r_func(plcMsgCallreq *req);
 
@@ -129,7 +128,7 @@ static int handle_matrix_set(SEXP retval, plcRFunction *r_func, plcMsgResult *re
 
 static int handle_retset(SEXP retval, plcRFunction *r_func, plcMsgResult *res);
 
-static int process_call_results(plcConn *conn, SEXP retval, plcRFunction *r_func);
+static int process_call_results(SEXP retval, plcRFunction *r_func);
 
 static SEXP arguments_to_r(plcRFunction *r_func);
 
@@ -245,7 +244,7 @@ int r_init(void) {
 }
 
 static char *get_load_self_ref_cmd() {
-	char *buf = (char *) pmalloc(PATH_MAX);
+	char *buf = (char *) palloc(PATH_MAX);
 
 #ifdef __linux__
 	char path[PATH_MAX];
@@ -300,7 +299,7 @@ static int load_r_cmd(const char *cmd) {
 	UNPROTECT(2);
 	return 0;
 
-	error:
+error:
 
 	UNPROTECT(2);
 	raise_execution_error("Error evaluating function %s", cmd);
@@ -308,7 +307,7 @@ static int load_r_cmd(const char *cmd) {
 	return -1;
 }
 
-void handle_call(plcMsgCallreq *req, plcConn *conn) {
+void handle_call(plcMsgCallreq *req) {
 	SEXP r,
 		strres,
 		call,
@@ -319,19 +318,15 @@ void handle_call(plcMsgCallreq *req, plcConn *conn) {
 	char *func,
 		*errmsg;
 
-	client_log_level = req->logLevel;
+	server_log_level = req->logLevel;
 	plc_elog(DEBUG1, "R client receives a call");
-	/*
-	 * Keep our connection for future calls from R back to us.
-	*/
-	plcconn_global = conn;
 
 	/* wrap the input in a function and evaluate the result */
 
 	func = create_r_func(req);
 
 	plcRFunction *r_func = plc_R_init_function(req);
-	PROTECT(r = parse_r_code(func, conn, &errorOccurred));
+	PROTECT(r = parse_r_code(func, &errorOccurred));
 
 	pfree(func);
 
@@ -364,14 +359,14 @@ void handle_call(plcMsgCallreq *req, plcConn *conn) {
 			errmsg = realloc(errmsg, strlen(errmsg) + strlen(req->proc.src));
 			errmsg = strcat(errmsg, req->proc.src);
 		}
-		send_error(conn, errmsg);
+		send_error(errmsg);
 		free(errmsg);
 		plc_r_free_function(r_func);
 		return;
 	}
 
 	if (plc_is_execution_terminated == 0) {
-		process_call_results(conn, strres, r_func);
+		process_call_results(strres, r_func);
 	}
 
 	plc_r_free_function(r_func);
@@ -382,22 +377,22 @@ void handle_call(plcMsgCallreq *req, plcConn *conn) {
 	return;
 }
 
-static void send_error(plcConn *conn, char *msg) {
+static void send_error(char *msg) {
 	/* an exception was thrown */
 	plcMsgError *err;
-	err = pmalloc(sizeof(plcMsgError));
+	err = palloc(sizeof(plcMsgError));
 	err->msgtype = MT_EXCEPTION;
 	err->message = msg;
 	err->stacktrace = NULL;
 
 	/* send the result back */
-	plcontainer_channel_send(conn, (plcMessage *) err);
+	plcontainer_channel_send(plcconn_global, (plcMessage *) err);
 
 	/* free the objects */
-	free(err);
+	pfree(err);
 }
 
-static SEXP parse_r_code(const char *code, plcConn *conn, int *errorOccurred) {
+static SEXP parse_r_code(const char *code, int *errorOccurred) {
 	/* int hadError; */
 	ParseStatus status;
 	char *errmsg;
@@ -443,7 +438,7 @@ static SEXP parse_r_code(const char *code, plcConn *conn, int *errorOccurred) {
 	 * set the global error flag
 	 */
 	*errorOccurred = 1;
-	send_error(conn, errmsg);
+	send_error(errmsg);
 	free(errmsg);
 	return NULL;
 }
@@ -468,7 +463,7 @@ static char *create_r_func(plcMsgCallreq *req) {
 	 */
 	mlen += strlen(req->proc.src) + strlen(req->proc.name) + 40 + strlen("gpdb.");
 
-	mrc = pmalloc(mlen);
+	mrc = palloc(mlen);
 
 	/* create the first part of the function name and add the args array */
 	plen = snprintf(mrc, mlen, "gpdb.%s <- function(args", req->proc.name);
@@ -497,14 +492,14 @@ static char *create_r_func(plcMsgCallreq *req) {
 }
 
 static int handle_frame(SEXP df, plcRFunction *r_func, plcMsgResult *res) {
-	uint32 row, col, cols;
+	uint32_t row, col, cols;
 
 	/* a data frame is an array of columns, the length of which is the number of columns */
 	res->cols = 1;
 	cols = length(df);
 	SEXP dfcol = VECTOR_ELT(df, 0);
 	res->rows = length(dfcol);
-	res->data = pmalloc(res->rows * sizeof(rawdata *));
+	res->data = palloc(res->rows * sizeof(rawdata *));
 
 
 	plc_r_copy_type(&res->types[0], &r_func->res);
@@ -514,13 +509,13 @@ static int handle_frame(SEXP df, plcRFunction *r_func, plcMsgResult *res) {
 		plcUDT *udt;
 
 		// allocate space for the data
-		res->data[row] = pmalloc(sizeof(rawdata));
+		res->data[row] = palloc(sizeof(rawdata));
 
 		// allocate space for the UDT
-		udt = pmalloc(sizeof(plcUDT));
+		udt = palloc(sizeof(plcUDT));
 
 		// allocate space for the columns of the UDT
-		udt->data = pmalloc(cols * sizeof(rawdata));
+		udt->data = palloc(cols * sizeof(rawdata));
 
 		for (col = 0; col < cols; col++) {
 
@@ -578,7 +573,7 @@ static int handle_matrix_set(SEXP retval, plcRFunction *r_func, plcMsgResult *re
 
 	// this is a matrix of vectors but we only handle one column in set of right now
 	res->cols = 1;
-	res->data = pmalloc(res->rows * sizeof(rawdata *));
+	res->data = palloc(res->rows * sizeof(rawdata *));
 
 	plc_r_copy_type(&res->types[0], &r_func->res);
 	res->names[0] = strdup(r_func->res.argName);
@@ -586,10 +581,10 @@ static int handle_matrix_set(SEXP retval, plcRFunction *r_func, plcMsgResult *re
 	for (i = 0; i < (int) res->rows; i++) {
 		plcUDT *udt;
 
-		res->data[i] = pmalloc(sizeof(rawdata));
+		res->data[i] = palloc(sizeof(rawdata));
 
-		udt = pmalloc(sizeof(plcUDT));
-		udt->data = pmalloc(cols * sizeof(rawdata));
+		udt = palloc(sizeof(plcUDT));
+		udt->data = palloc(cols * sizeof(rawdata));
 
 		for(j = 0; j < cols; j++)
 		{
@@ -607,7 +602,7 @@ static int handle_matrix_set(SEXP retval, plcRFunction *r_func, plcMsgResult *re
 }
 
 static int handle_retset(SEXP retval, plcRFunction *r_func, plcMsgResult *res) {
-	uint32 i = 0;
+	uint32_t i = 0;
 	rawdata *raw;
 
 	/*
@@ -657,9 +652,9 @@ static int handle_retset(SEXP retval, plcRFunction *r_func, plcMsgResult *res) {
 	return 0;
 }
 
-static int process_call_results(plcConn *conn, SEXP retval, plcRFunction *r_func) {
+static int process_call_results(SEXP retval, plcRFunction *r_func) {
 	plcMsgResult *res;
-	uint32 i = 0;
+	uint32_t i = 0;
 	int ret = 0;
 
 
@@ -723,7 +718,7 @@ static int process_call_results(plcConn *conn, SEXP retval, plcRFunction *r_func
 		}
 	}
 	/* send the result back */
-	plcontainer_channel_send(conn, (plcMessage *) res);
+	plcontainer_channel_send(plcconn_global, (plcMessage *) res);
 
 	free_result(res, true);
 
@@ -800,10 +795,10 @@ static void pg_get_one_r(char *value, plcDatatype column_type, SEXP *obj, int el
 
 		/* 2 and 4 byte integer pgsql datatype => use R INTEGER */
 		case PLC_DATA_INT2:
-			INTEGER_DATA(*obj)[elnum] = *((int16 *) value);
+			INTEGER_DATA(*obj)[elnum] = *((int16_t *) value);
 			break;
 		case PLC_DATA_INT4:
-			INTEGER_DATA(*obj)[elnum] = *((int32 *) value);
+			INTEGER_DATA(*obj)[elnum] = *((int32_t *) value);
 			break;
 
 			/*
@@ -812,17 +807,17 @@ static void pg_get_one_r(char *value, plcDatatype column_type, SEXP *obj, int el
 			 * because R INTEGER is only 4 byte
 			 */
 		case PLC_DATA_INT8:
-			NUMERIC_DATA(*obj)[elnum] = (int64) (*((float8 *) value));
+			NUMERIC_DATA(*obj)[elnum] = (int64_t) (*((double *) value));
 			break;
 		case PLC_DATA_FLOAT4:
-			NUMERIC_DATA(*obj)[elnum] = *((float4 *) value);
+			NUMERIC_DATA(*obj)[elnum] = *((float *) value);
 			break;
 		case PLC_DATA_FLOAT8:
-			NUMERIC_DATA(*obj)[elnum] = *((float8 *) value);
+			NUMERIC_DATA(*obj)[elnum] = *((double *) value);
 			break;
 
 		case PLC_DATA_INT1:
-			LOGICAL_DATA(*obj)[elnum] = *((int8 *) value);
+			LOGICAL_DATA(*obj)[elnum] = *((int8_t *) value);
 			break;
 
 		case PLC_DATA_UDT:
@@ -866,7 +861,7 @@ static SEXP process_SPI_results() {
 		row_names,
 		fldvec;
 
-	uint32 i, j;
+	uint32_t i, j;
 	int res = 0;
 
 	char buf[256];
@@ -879,7 +874,7 @@ receive:
 	}
 	switch (resp->msgtype) {
 		case MT_CALLREQ:
-			handle_call((plcMsgCallreq *) resp, plcconn_global);
+			handle_call((plcMsgCallreq *) resp);
 			free_callreq((plcMsgCallreq *) resp, false, false);
 			goto receive;
 		case MT_PING:
@@ -1008,7 +1003,7 @@ SEXP plr_SPI_exec(SEXP rsql) {
 		return NULL;
 	}
 
-	msg = pmalloc(sizeof(plcMsgSQL));
+	msg = palloc(sizeof(plcMsgSQL));
 	msg->msgtype = MT_SQL;
 	msg->sqltype = SQL_TYPE_STATEMENT;
 	msg->limit = 0;    /* No limit for R. */
@@ -1035,7 +1030,6 @@ SEXP plr_SPI_prepare(SEXP rsql, SEXP rargtypes) {
 	int nargs;
 	int res;
 	int i;
-	plcConn *conn = plcconn_global;
 	r_saved_plan *r_plan;
 
 	SEXP r_result;
@@ -1086,10 +1080,10 @@ SEXP plr_SPI_prepare(SEXP rsql, SEXP rargtypes) {
 
 	UNPROTECT(1);
 
-	plcontainer_channel_send(conn, (plcMessage *) &msg);
+	plcontainer_channel_send(plcconn_global, (plcMessage *) &msg);
 	free_arguments(msg.args, msg.nargs, false, false);
 
-	res = plcontainer_channel_receive(conn, &resp, MT_RAW_BIT | MT_EXCEPTION_BIT);
+	res = plcontainer_channel_receive(plcconn_global, &resp, MT_RAW_BIT | MT_EXCEPTION_BIT);
 
 	if (resp->msgtype == MT_EXCEPTION) {
 			if (((plcMsgError *) resp)->message != NULL) {
@@ -1106,19 +1100,20 @@ SEXP plr_SPI_prepare(SEXP rsql, SEXP rargtypes) {
 	start = ((plcMsgRaw *) resp)->data;
 	tx_len = ((plcMsgRaw *) resp)->size;
 
-	r_plan = (r_saved_plan *) malloc(sizeof(r_saved_plan));
-	is_plan_valid = (*((int32 *) (start + offset)));
-	offset += sizeof(int32);
+	r_plan = (r_saved_plan *) palloc(sizeof(r_saved_plan));
+	is_plan_valid = (*((int32_t *) (start + offset)));
+	offset += sizeof(int32_t);
 
 	if (!is_plan_valid) {
 		raise_execution_error("plpy.prepare failed. See backend for details.");
 		return NULL;
 	}
 
-	r_plan->pplan = (int64 *) (*((long long *) (start + offset)));
-	offset += sizeof(int64);
+	// TODO: int or int32_t?
+	r_plan->pplan = (int64_t *) (start + offset);
+	offset += sizeof(int64_t);
 	r_plan->nargs = *((int *) (start + offset));
-	offset += sizeof(int32);
+	offset += sizeof(int32_t);
 
 
 	if (r_plan->nargs != nargs) {
@@ -1127,15 +1122,16 @@ SEXP plr_SPI_prepare(SEXP rsql, SEXP rargtypes) {
 		return NULL;
 	}
 
+	// TODO: size_t -> int32_t, will it overflow?
 	if (nargs > 0) {
-		if (offset + (signed int) sizeof(plcDatatype) * nargs != tx_len) {
+		if (offset + (int32_t) sizeof(plcDatatype) * nargs != tx_len) {
 			raise_execution_error("Client format error for spi prepare. "
 				                      "calculated length (%d) vs transferred length (%d)",
 			                      offset + sizeof(plcDatatype) * nargs, tx_len);
 			return NULL;
 		}
 
-		r_plan->argtypes = malloc(sizeof(plcDatatype) * nargs);
+		r_plan->argtypes = (plcDatatype*) palloc(sizeof(plcDatatype) * nargs);
 		if (r_plan->argtypes == NULL) {
 			raise_execution_error("Could not allocate %d bytes for argtypes"
 				                      " in py_plan", sizeof(plcDatatype) * nargs);
@@ -1170,7 +1166,7 @@ SEXP plr_SPI_execp(SEXP rsaved_plan, SEXP rargvalues) {
 	}
 
 	nargs = r_plan->nargs;
-	args = pmalloc(sizeof(plcArgument) * nargs);
+	args = palloc(sizeof(plcArgument) * nargs);
 	if (nargs > 0) {
 		if (!Rf_isVectorList(rargvalues)) {
 			raise_execution_error("second parameter must be a list of arguments to the prepared plan");
@@ -1257,14 +1253,14 @@ void raise_execution_error(const char *format, ...) {
 
 }
 
-void plc_raise_delayed_error(plcConn *conn) {
+void plc_raise_delayed_error() {
 	if (plcLastErrMessage != NULL) {
-		if (plc_is_execution_terminated == 0 && conn != NULL) {
-			plcontainer_channel_send(conn, (plcMessage *) plcLastErrMessage);
+		if (plc_is_execution_terminated == 0 && plcconn_global != NULL) {
+			plcontainer_channel_send(plcconn_global, (plcMessage *) plcLastErrMessage);
 			free_error(plcLastErrMessage);
 			plcLastErrMessage = NULL;
 			plc_is_execution_terminated = 1;
-		} else if (conn == NULL) {
+		} else if (plcconn_global == NULL) {
 			plc_elog(ERROR, "client caught an error: %s", plcLastErrMessage->message);
 		}
 	}
@@ -1282,6 +1278,38 @@ void throw_r_error(const char **msg) {
 		last_R_error_msg = strdup("caught error calling R function");
 }
 
+/*
+ * The loop of receiving commands from the Greenplum process and processing them
+ */
+void receive_loop() {
+	plcMessage *msg;
+	int res = 0;
+
+	res = plcontainer_channel_receive(plcconn_global, &msg, MT_PING_BIT);
+	if (res < 0) {
+		plc_elog(ERROR, "Error receiving data from the backend, %d", res);
+		return;
+	}
+
+	res = plcontainer_channel_send(plcconn_global, msg);
+	if (res < 0) {
+		plc_elog(ERROR, "Cannot send 'ping' message response");
+		return;
+	}
+	pfree(msg);
+
+	while (1) {
+		res = plcontainer_channel_receive(plcconn_global, &msg, MT_CALLREQ_BIT);
+
+		if (res < 0) {
+				plc_elog(ERROR, "Error receiving data from the peer: %d", res);
+			break;
+		}
+		plc_elog(DEBUG1, "Client receive a request: called function oid %u", ((plcMsgCallreq *) msg)->objectid);
+		handle_call((plcMsgCallreq *) msg);
+		free_callreq((plcMsgCallreq *) msg, false, false);
+	}
+}
 
 #ifdef DEBUGPROTECT
 int balance=0;

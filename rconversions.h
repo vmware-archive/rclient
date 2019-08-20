@@ -13,7 +13,7 @@
 #include <Rdefines.h>
 
 #include "common/messages/messages.h"
-#include "common/comm_utils.h"
+#include "server/server_misc.h"
 
 #define PLC_MAX_ARRAY_DIMS 2
 
