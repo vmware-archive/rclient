@@ -24,10 +24,10 @@
 #include <Rdefines.h>
 
 /* PL/Container header files */
-#include "common/comm_channel.h"
-#include "common/messages/messages.h"
-#include "common/comm_connectivity.h"
-#include "server/server_misc.h"
+#include "comm_channel.h"
+#include "messages/messages.h"
+#include "comm_connectivity.h"
+#include "misc.h"
 #include "rcall.h"
 #include "rconversions.h"
 #include "rlogging.h"

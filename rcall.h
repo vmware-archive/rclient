@@ -7,8 +7,8 @@
 #ifndef PLC_RCALL_H
 #define PLC_RCALL_H
 
-#include "common/messages/messages.h"
-#include "common/comm_connectivity.h"
+#include "messages/messages.h"
+#include "comm_connectivity.h"
 
 #define UNUSED __attribute__ (( unused ))
 

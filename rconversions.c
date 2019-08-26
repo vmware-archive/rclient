@@ -6,7 +6,7 @@
  */
 #include "rconversions.h"
 #include "rcall.h"
-#include "common/comm_channel.h"
+#include "comm_channel.h"
 
 static SEXP plc_r_object_from_int1(char *input, plcRType *type);
 

@@ -7,14 +7,16 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "common/comm_connectivity.h"
-#include "server/server.h"
-#include "server/server_misc.h"
+#include "comm_connectivity.h"
+#include "server.h"
+#include "misc.h"
 #include "rcall.h"
 
 int main(int argc UNUSED, char **argv UNUSED) {
 	int status;
 
+	// Make sure we have the same length in GPDB and server side
+	assert(sizeof(float) == 4 && sizeof(double) == 8);
 	set_signal_handlers();
 
 	// Initialize R

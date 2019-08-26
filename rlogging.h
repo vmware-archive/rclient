@@ -9,7 +9,7 @@
 
 #include <R.h>
 
-#include "server/server_misc.h"
+#include "misc.h"
 
 SEXP plr_debug(SEXP args);
 
