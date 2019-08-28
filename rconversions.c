@@ -6,7 +6,7 @@
  */
 #include "rconversions.h"
 #include "rcall.h"
-#include "common/comm_channel.h"
+#include "comm_channel.h"
 
 static SEXP plc_r_object_from_int1(char *input, plcRType *type);
 
@@ -90,7 +90,7 @@ static SEXP plc_r_object_from_int4(char *input, plcRType *type UNUSED) {
 
 static SEXP plc_r_object_from_int8(char *input, plcRType *type UNUSED) {
 	SEXP arg;
-	PROTECT(arg = ScalarReal((double) *((int64 *) input)));
+	PROTECT(arg = ScalarReal((double) *((int64_t *) input)));
 	return arg;
 }
 
@@ -173,7 +173,7 @@ static SEXP plc_r_object_from_array(char *input, plcRType *type) {
 					if (arr->nulls[i] != 0) {
 						NUMERIC_DATA(res)[i] = NA_REAL;
 					} else {
-						NUMERIC_DATA(res)[i] = (float8) asReal(obj);
+						NUMERIC_DATA(res)[i] = (double) asReal(obj);
 					}
 					break;
 
@@ -181,7 +181,7 @@ static SEXP plc_r_object_from_array(char *input, plcRType *type) {
 					if (arr->nulls[i] != 0) {
 						NUMERIC_DATA(res)[i] = NA_REAL;
 					} else {
-						NUMERIC_DATA(res)[i] = (float4) asReal(obj);
+						NUMERIC_DATA(res)[i] = (float) asReal(obj);
 					}
 					break;
 
@@ -189,7 +189,7 @@ static SEXP plc_r_object_from_array(char *input, plcRType *type) {
 					if (arr->nulls[i] != 0) {
 						NUMERIC_DATA(res)[i] = NA_REAL;
 					} else {
-						NUMERIC_DATA(res)[i] = (float8) asReal(obj);
+						NUMERIC_DATA(res)[i] = (double) asReal(obj);
 					}
 					break;
 				case PLC_DATA_INT1:
@@ -344,13 +344,13 @@ static int plc_r_object_as_int1(SEXP input, char **output, plcRType *type UNUSED
 	*output = out;
 	switch (TYPEOF(input)) {
 		case LGLSXP:
-			*((int8 *) out) = (int8) asLogical(input);
+			*((int8_t *) out) = (int8_t) asLogical(input);
 			break;
 		case INTSXP:
-			*((int8 *) out) = (int8) asInteger(input) == 0 ? 0 : 1;
+			*((int8_t *) out) = (int8_t) asInteger(input) == 0 ? 0 : 1;
 			break;
 		case REALSXP:
-			*((int8 *) out) = (int8) asReal(input) == 0 ? 0 : 1;
+			*((int8_t *) out) = (int8_t) asReal(input) == 0 ? 0 : 1;
 			break;
 		default:
 			res = -1;
@@ -409,13 +409,13 @@ static int plc_r_object_as_int8(SEXP input, char **output, plcRType *type UNUSED
 
 	switch (TYPEOF(input)) {
 		case LGLSXP:
-			*((int64 *) out) = (int64) asLogical(input);
+			*((int64_t *) out) = (int64_t) asLogical(input);
 			break;
 		case INTSXP:
-			*((int64 *) out) = (int64) asInteger(input);
+			*((int64_t *) out) = (int64_t) asInteger(input);
 			break;
 		case REALSXP:
-			*((int64 *) out) = (int64) asReal(input);
+			*((int64_t *) out) = (int64_t) asReal(input);
 			break;
 		default:
 			res = -1;
@@ -430,13 +430,13 @@ static int plc_r_object_as_float4(SEXP input, char **output, plcRType *type UNUS
 
 	switch (TYPEOF(input)) {
 		case LGLSXP:
-			*((float4 *) out) = (float4) asLogical(input);
+			*((float *) out) = (float) asLogical(input);
 			break;
 		case INTSXP:
-			*((float4 *) out) = (float4) asInteger(input);
+			*((float *) out) = (float) asInteger(input);
 			break;
 		case REALSXP:
-			*((float4 *) out) = (float4) asReal(input);
+			*((float *) out) = (float) asReal(input);
 			break;
 		default:
 			res = -1;
@@ -452,13 +452,13 @@ static int plc_r_object_as_float8(SEXP input, char **output, plcRType *type UNUS
 
 	switch (TYPEOF(input)) {
 		case LGLSXP:
-			*((float8 *) out) = (float8) asLogical(input);
+			*((double *) out) = (double) asLogical(input);
 			break;
 		case INTSXP:
-			*((float8 *) out) = (float8) asInteger(input);
+			*((double *) out) = (double) asInteger(input);
 			break;
 		case REALSXP:
-			*((float8 *) out) = (float8) asReal(input);
+			*((double *) out) = (double) asReal(input);
 			break;
 		default:
 			res = -1;
@@ -488,7 +488,7 @@ static void plc_r_object_iter_free(plcIterator *iter) {
 }
 
 rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype) {
-	rawdata *res = (rawdata *) pmalloc(sizeof(rawdata));
+	rawdata *res = (rawdata *) palloc(sizeof(rawdata));
 	if ((vector == R_NilValue)
 	    || ((TYPEOF(vector) == LGLSXP) && (asLogical(vector) == NA_LOGICAL))
 	    || ((TYPEOF(vector) == INTSXP) && (asInteger(vector) == NA_INTEGER))
@@ -508,7 +508,7 @@ rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype) {
 					res = NULL;
 					break;
 				}
-				res->value = pmalloc(sizeof(int));
+				res->value = palloc(sizeof(int));
 				if (LOGICAL_DATA(vector)[idx] == NA_LOGICAL) {
 					res->isnull = 1;
 					*((int *) res->value) = (int) 0;
@@ -526,7 +526,7 @@ rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype) {
 					break;
 				}
 				/* 2 and 4 byte integer pgsql datatype => use R INTEGER */
-				res->value = pmalloc(sizeof(int));
+				res->value = palloc(sizeof(int));
 				if (INTEGER_DATA(vector)[idx] == NA_INTEGER) {
 					*((int *) res->value) = (int) 0;
 					res->isnull = 1;
@@ -542,20 +542,20 @@ rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype) {
 				 */
 
 			case PLC_DATA_INT8:
-				res->value = pmalloc(sizeof(int64));
+				res->value = palloc(sizeof(int64_t));
 				if (IS_INTEGER(vector)) {
 					if (INTEGER_DATA(vector)[idx] == NA_INTEGER) {
-						*((int64 *) res->value) = (int64) 0;
+						*((int64_t *) res->value) = (int64_t) 0;
 						res->isnull = 1;
 					} else {
-						*((int64 *) res->value) = (int64) (INTEGER_DATA(vector)[idx]);
+						*((int64_t *) res->value) = (int64_t) (INTEGER_DATA(vector)[idx]);
 					}
 				} else if (IS_NUMERIC(vector)) {
 					if (R_IsNA(NUMERIC_DATA(vector)[idx])) {
 						res->isnull = 1;
-						*((int64 *) res->value) = (int64) 0;
+						*((int64_t *) res->value) = (int64_t) 0;
 					} else {
-						*((int64 *) res->value) = (int64) (NUMERIC_DATA(vector)[idx]);
+						*((int64_t *) res->value) = (int64_t) (NUMERIC_DATA(vector)[idx]);
 					}
 				} else {
 					raise_execution_error("Actual R type is not matching excpected returned type %s [%d]",
@@ -574,12 +574,12 @@ rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype) {
 					res = NULL;
 					break;
 				}
-				res->value = pmalloc(sizeof(float4));
+				res->value = palloc(sizeof(float));
 				if (R_IsNA(NUMERIC_DATA(vector)[idx])) {
 					res->isnull = 1;
-					*((float4 *) res->value) = (float4) 0;
+					*((float *) res->value) = (float) 0;
 				} else {
-					*((float4 *) res->value) = (float4) (NUMERIC_DATA(vector)[idx]);
+					*((float *) res->value) = (float) (NUMERIC_DATA(vector)[idx]);
 				}
 				break;
 			case PLC_DATA_FLOAT8:
@@ -590,19 +590,19 @@ rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype) {
 					res = NULL;
 					break;
 				}
-				res->value = pmalloc(sizeof(float8));
+				res->value = palloc(sizeof(double));
 				if (R_IsNA(NUMERIC_DATA(vector)[idx])) {
 					res->isnull = 1;
-					*((float8 *) res->value) = (float8) 0;
+					*((double *) res->value) = (double) 0;
 				} else {
-					*((float8 *) res->value) = (float8) (NUMERIC_DATA(vector)[idx]);
+					*((double *) res->value) = (double) (NUMERIC_DATA(vector)[idx]);
 				}
 				break;
 
 			case PLC_DATA_UDT:
 				if (VECTOR_ELT(vector, idx) == R_NilValue) {
 					res->isnull = TRUE;
-					res->value = pmalloc(sizeof(int));
+					res->value = palloc(sizeof(int));
 					*((int *) res->value) = (int) 0;
 				} else {
 					res->isnull = FALSE;
@@ -617,7 +617,7 @@ rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype) {
 					// these are arrays of primitives
 					if (VECTOR_ELT(vector, idx) == R_NilValue) {
 						res->isnull = TRUE;
-						res->value = pmalloc(sizeof(int));
+						res->value = palloc(sizeof(int));
 						*((int *) res->value) = (int) 0;
 					} else {
 						res->isnull = FALSE;
@@ -626,7 +626,7 @@ rawdata *plc_r_vector_element_rawdata(SEXP vector, int idx, plcRType *rtype) {
 				} else {
 					if (vector == R_NilValue) {
 						res->isnull = TRUE;
-						res->value = pmalloc(sizeof(int));
+						res->value = palloc(sizeof(int));
 						*((int *) res->value) = (int) 0;
 					} else {
 						res->isnull = FALSE;
@@ -727,31 +727,31 @@ static int plc_r_object_as_array(SEXP input, char **output, plcRType *type) {
 		PROTECT(rdims = getAttrib(input, R_DimSymbol));
 		if (rdims != R_NilValue) {
 			ndims = length(rdims);
-			dims = (size_t *) pmalloc(ndims * sizeof(int));
+			dims = (size_t *) palloc(ndims * sizeof(int));
 			for (i = 0; i < ndims; i++) {
 				dims[i] = INTEGER(rdims)[i];
 			}
 		} else {
 			ndims = 1;
-			dims = (size_t *) pmalloc(1 * sizeof(int));
+			dims = (size_t *) palloc(1 * sizeof(int));
 			dims[0] = length(input);
 		}
 		UNPROTECT(1);
 
 
 		/* Allocate the iterator */
-		iter = (plcIterator *) pmalloc(sizeof(plcIterator));
+		iter = (plcIterator *) palloc(sizeof(plcIterator));
 
 		/* Initialize metas */
-		arrmeta = (plcArrayMeta *) pmalloc(sizeof(plcArrayMeta));
+		arrmeta = (plcArrayMeta *) palloc(sizeof(plcArrayMeta));
 		arrmeta->ndims = ndims;
-		arrmeta->dims = (int *) pmalloc(ndims * sizeof(int));
+		arrmeta->dims = (int *) palloc(ndims * sizeof(int));
 		arrmeta->size = (ndims == 0) ? 0 : 1;
 		arrmeta->type = type->subTypes[0].type;
 
-		meta = (plcRArrMeta *) pmalloc(sizeof(plcRArrMeta));
+		meta = (plcRArrMeta *) palloc(sizeof(plcRArrMeta));
 		meta->ndims = ndims;
-		meta->dims = (size_t *) pmalloc(ndims * sizeof(size_t));
+		meta->dims = (size_t *) palloc(ndims * sizeof(size_t));
 		meta->outputfunc = plc_get_output_function(type->subTypes[0].type);
 		meta->type = &type->subTypes[0];
 
@@ -766,7 +766,7 @@ static int plc_r_object_as_array(SEXP input, char **output, plcRType *type) {
 		iter->payload = (char *) meta;
 
 		/* Initializing initial position */
-		ptrs = (plcRArrPointer *) pmalloc(sizeof(plcRArrPointer));
+		ptrs = (plcRArrPointer *) palloc(sizeof(plcRArrPointer));
 		ptrs->pos = 0;
 		ptrs->obj = input;
 
@@ -812,8 +812,8 @@ static int plc_r_object_as_udt(SEXP input, char **output, plcRType *type) {
 		int i = 0;
 		plcUDT *udt;
 
-		udt = pmalloc(sizeof(plcUDT));
-		udt->data = pmalloc(type->nSubTypes * sizeof(rawdata));
+		udt = palloc(sizeof(plcUDT));
+		udt->data = palloc(type->nSubTypes * sizeof(rawdata));
 		for (i = 0; i < type->nSubTypes && res == 0; i++) {
 
 			PROTECT(dfcol = VECTOR_ELT(input, i));
@@ -882,7 +882,7 @@ static int plc_r_object_as_bytea(SEXP input, char **output, plcRType *type UNUSE
 	}
 
 	len = LENGTH(obj);
-	result = pmalloc(len + 4);
+	result = palloc(len + 4);
 	*((int *) result) = len;
 	memcpy(result + 4, (char *) RAW(obj), len);
 	*output = result;
@@ -1027,7 +1027,7 @@ plcRFunction *plc_R_init_function(plcMsgCallreq *call) {
 
 plcRResult *plc_init_result_conversions(plcMsgResult *res) {
 	plcRResult *Rres = NULL;
-	uint32 i;
+	uint32_t i;
 
 	Rres = (plcRResult *) malloc(sizeof(plcRResult));
 	Rres->res = res;
@@ -1078,7 +1078,7 @@ void plc_r_copy_type(plcType *type, plcRType *rtype) {
 	type->typeName = (rtype->typeName == NULL) ? NULL : strdup(rtype->typeName);
 	if (type->nSubTypes > 0) {
 		int i = 0;
-		type->subTypes = (plcType *) pmalloc(type->nSubTypes * sizeof(plcType));
+		type->subTypes = (plcType *) palloc(type->nSubTypes * sizeof(plcType));
 		for (i = 0; i < type->nSubTypes; i++)
 			plc_r_copy_type(&type->subTypes[i], &rtype->subTypes[i]);
 	} else {

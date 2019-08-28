@@ -7,9 +7,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
-#include "common/messages/messages.h"
-#include "common/comm_channel.h"
-#include "common/comm_utils.h"
+#include "messages/messages.h"
+#include "comm_channel.h"
 #include "rcall.h"
 #include "rlogging.h"
 
@@ -44,7 +43,6 @@ SEXP plr_fatal(SEXP args) {
 }
 
 static SEXP plr_output(volatile int level, SEXP args) {
-	plcConn *conn = plcconn_global;
 	plcMsgLog *msg;
 
 	if (plc_is_execution_terminated == 0) {
@@ -54,15 +52,15 @@ static SEXP plr_output(volatile int level, SEXP args) {
 		if (level >= ERROR)
 			plc_is_execution_terminated = 1;
 
-		msg = pmalloc(sizeof(plcMsgLog));
+		msg = palloc(sizeof(plcMsgLog));
 		msg->msgtype = MT_LOG;
 		msg->level = level;
 		msg->message = str_msg;
 
-		plcontainer_channel_send(conn, (plcMessage *) msg);
+		plcontainer_channel_send(plcconn_global, (plcMessage *) msg);
 
-		free(msg);
-		free(str_msg);
+		pfree(msg);
+		pfree(str_msg);
 	}
 
 	/*
