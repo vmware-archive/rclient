@@ -7,8 +7,9 @@
 #include <R.h>
 #include <Rinternals.h>
 
-#include "messages/messages.h"
-#include "comm_channel.h"
+#include "common/comm_channel.h"
+#include "common/comm_dummy.h"
+#include "common/messages/messages.h"
 #include "rcall.h"
 #include "rlogging.h"
 
