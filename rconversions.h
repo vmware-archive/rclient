@@ -12,8 +12,7 @@
 #include <Rinternals.h>
 #include <Rdefines.h>
 
-#include "messages/messages.h"
-#include "misc.h"
+#include "common/messages/messages.h"
 
 #define PLC_MAX_ARRAY_DIMS 2
 

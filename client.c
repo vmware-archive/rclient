@@ -7,9 +7,9 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "comm_connectivity.h"
-#include "server.h"
-#include "misc.h"
+#include "common/comm_dummy.h"
+#include "common/comm_connectivity.h"
+#include "server/server.h"
 #include "rcall.h"
 
 int main(int argc UNUSED, char **argv UNUSED) {

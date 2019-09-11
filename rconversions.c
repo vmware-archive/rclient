@@ -4,9 +4,12 @@
  *
  *------------------------------------------------------------------------------
  */
+#include <stdbool.h>
+#include <stddef.h>
 #include "rconversions.h"
 #include "rcall.h"
-#include "comm_channel.h"
+#include "common/comm_channel.h"
+#include "common/comm_dummy.h"
 
 static SEXP plc_r_object_from_int1(char *input, plcRType *type);
 

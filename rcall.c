@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <netinet/ip.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -24,10 +25,11 @@
 #include <Rdefines.h>
 
 /* PL/Container header files */
-#include "comm_channel.h"
-#include "messages/messages.h"
-#include "comm_connectivity.h"
-#include "misc.h"
+#include "common/comm_channel.h"
+#include "common/comm_connectivity.h"
+#include "common/comm_dummy.h"
+#include "common/messages/messages.h"
+#include "server/server.h"
 #include "rcall.h"
 #include "rconversions.h"
 #include "rlogging.h"

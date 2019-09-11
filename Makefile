@@ -33,8 +33,7 @@ else
 
 # Global build Directories
 
-SERVER_INCLUDE_DIR = ../include/server
-COMMON_INCLUDE_DIR = ../include/common
+INCLUDE_DIR = ../include
 
 
 # R build flags
@@ -43,11 +42,11 @@ COMMON_INCLUDE_DIR = ../include/common
 CLIENT_CFLAGS = $(r_includespec)
 CLIENT_LDFLAGS = -Wl,--export-dynamic -fopenmp -Wl,-z,relro -L${r_libdir2x} -lR -Wl,-rpath,'$$ORIGIN'
 
-override CFLAGS += -std=gnu99 $(CLIENT_CFLAGS) -I$(SERVER_INCLUDE_DIR) -I$(COMMON_INCLUDE_DIR)/ -DPLC_CLIENT -Wall -Wextra -Werror -Wno-unused-result
+override CFLAGS += -std=gnu99 $(CLIENT_CFLAGS) -I$(INCLUDE_DIR) -DPLC_SERVER -Wall -Wextra -Werror -Wno-unused-result
 override LDFLAGS += $(CLIENT_LDFLAGS)
 
 CLIENT = rclient
-common_src = ../common/comm_channel.c ../common/comm_connectivity.c ../common/comm_messages.c \
+common_src = ../common/base_network.c ../common/comm_channel.c ../common/comm_connectivity.c ../common/comm_messages.c ../common/comm_dummy_server.c \
              ../server/server.c ../server/misc.c
 common_objs = $(foreach src,$(common_src),$(subst .c,.$(CLIENT).o,$(src)))
 shared_src = rcall.c rconversions.c rlogging.c
