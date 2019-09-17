@@ -6,13 +6,14 @@
  */
 #include <stdlib.h>
 #include <assert.h>
+#include <unistd.h>
 
-#include "common/comm_dummy.h"
 #include "common/comm_connectivity.h"
+#include "common/comm_dummy.h"
 #include "server/server.h"
 #include "rcall.h"
 
-int main(int argc UNUSED, char **argv UNUSED) {
+int main(int argc, char **argv) {
 	int status;
 
 	// Make sure we have the same length in GPDB and server side
@@ -20,17 +21,22 @@ int main(int argc UNUSED, char **argv UNUSED) {
 	set_signal_handlers();
 
 	// Initialize R
-	plc_elog(LOG, "Client start to listen execution");
+	plc_elog(LOG, "Server start to listen execution");
 	status = r_init();
+	if (argc == 0) {
+		plcconn_global = start_server(NULL);
+	} else {
+		plc_elog(LOG, "Server start in stand alone mode in %s", argv[1]);
+		plcconn_global = start_server(argv[1]);
+	}
 
-	plcconn_global = start_server();
 	if (status == 0) {
 		receive_loop();
 	} else {
 		plc_raise_delayed_error(plcconn_global);
 	}
 
-	plc_elog(LOG, "Client has finished execution");
+	plc_elog(LOG, "Server has finished execution");
 	return 0;
 }
 
