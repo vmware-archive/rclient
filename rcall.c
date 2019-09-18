@@ -206,8 +206,10 @@ int r_init(void) {
 	*/
 	R_SignalHandlers = 0;
 	if (r_home == NULL) {
-		plc_elog(ERROR, "R_HOME is not set, please check and set the R_HOME");
-		return -1;
+		/* TODO: fix if R_HOME is not set (i.e., defalut vaule) */
+		plc_elog(WARNING, "R_HOME is not set, try use default R_HOME");
+		r_home = (char*) palloc(256);
+		strcpy(r_home, "/usr/lib/R");
 	}
 
 	rargc = sizeof(rargv) / sizeof(rargv[0]);
@@ -1112,7 +1114,7 @@ SEXP plr_SPI_prepare(SEXP rsql, SEXP rargtypes) {
 	}
 
 	// TODO: int or int32_t?
-	r_plan->pplan = (int64_t *) (start + offset);
+	r_plan->pplan = (void *)(*(int64_t *) (start + offset));
 	offset += sizeof(int64_t);
 	r_plan->nargs = *((int *) (start + offset));
 	offset += sizeof(int32_t);
