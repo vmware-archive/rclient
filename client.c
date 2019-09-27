@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
 	// Initialize R
 	plc_elog(LOG, "Server start to listen execution");
 	status = r_init();
-	if (argc == 0) {
+	if (argc <= 1) {
 		plcconn_global = start_server(NULL);
 	} else {
 		plc_elog(LOG, "Server start in stand alone mode in %s", argv[1]);
