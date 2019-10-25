@@ -101,6 +101,9 @@ all:  $(ALL_OBJS) librcall.so
 	$(CXX) -o $(SERVER) $^ $(LDFLAGS) $(CXXFLAGS)
 	cp $(SERVER) bin
 
+.PHONY: format
+format:
+	@-[ -n "`command -v clang-format`" ] && clang-format -style="{BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 100}" -i src/*.cc test/*.cc include/*.hh
 
 
 
