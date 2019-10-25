@@ -1,6 +1,12 @@
-/rclient
+/rserver
 /*.so
-/bin/rclient
+/bin/rserver
 /bin/*.so
 *.o
+*.a
 *.d
+*.pb.h
+*.pb.cc
+tags
+googletest/
+rserver_gtest
