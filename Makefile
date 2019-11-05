@@ -39,6 +39,8 @@ else
 SERVER = rserver
 CXX = g++
 
+
+PLCDIR = ../..
 SRC = src
 INCLUDE = include
 
@@ -85,9 +87,15 @@ COMMON_OBJS = src/rserver.o src/rcall.o src/rtypeconverter.o src/rutils.o src/pl
 ALL_OBJS = src/server.o $(COMMON_OBJS)
 
 .PHONY: default
-default: all
+default: copy-proto format all
 
+.PHONY: copy-proto
 
+copy-proto:
+	@cp $(PLCDIR)/src/include/proto/plcontainer.pb.h $(INCLUDE)/
+	@cp $(PLCDIR)/src/include/proto/plcontainer.grpc.pb.h $(INCLUDE)/
+	@cp $(PLCDIR)/src/proto/plcontainer.pb.cc $(SRC)/
+	@cp $(PLCDIR)/src/proto/plcontainer.grpc.pb.cc $(SRC)/
 
 %.o: %.cc
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -fPIC -c $< -o $@
@@ -118,7 +126,7 @@ ifeq ($(ENABLE_COVERAGE),yes)
 endif
 
 TEST_INCLUDES = -Isrc/ -Iinclude/
-TEST_OBJS = test/rserver_test.o test/rcall_test.o test/rtypeconverter_test.o
+TEST_OBJS = test/rserver_test.o test/rcall_test.o test/rtypeconverter_test.o test/rutils_test.o
 
 TEST_SRC = $(TEST_OBJS:.o=.cc)
 TEST_APP = rserver_gtest
