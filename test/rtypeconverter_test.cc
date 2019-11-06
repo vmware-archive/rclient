@@ -1,5 +1,5 @@
 #include "rcall.hh"
-#include "rtypeconverter.cc"
+#include "rtypeconverter.hh"
 #include "gtest/gtest.h"
 #include "plcontainer.pb.h"
 #include "plcontainer.grpc.pb.h"
@@ -8,10 +8,17 @@ using namespace plcontainer;
 
 class RConvTest : public testing::Test {
    protected:
-    virtual void SetUp() { core = new RCoreRuntime(); }
-    virtual void TearDown() { delete core; }
+    virtual void SetUp() {
+        logs = new RServerLog(RServerWorkingMode::CONTAINER, std::string(""));
+        core = new RCoreRuntime(logs);
+    }
+    virtual void TearDown() {
+        delete core;
+        delete logs;
+    }
 
     RCoreRuntime *core;
+    RServerLog *logs;
 };
 
 TEST_F(RConvTest, RConvResultsREAL) {

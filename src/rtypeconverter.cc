@@ -39,9 +39,9 @@ SEXP ConvertToSEXP::byteaToSEXP(const std::string &v) {
     memcpy((char *)RAW(obj), v.data(), v.size());
 
     /*
-     * Need to construct a call to
-     * unserialize(rval)
-     */
+ * Need to construct a call to
+ * unserialize(rval)
+ */
     PROTECT(t = s = allocList(2));
     SET_TYPEOF(s, LANGSXP);
     SETCAR(t, install("unserialize"));
@@ -49,13 +49,14 @@ SEXP ConvertToSEXP::byteaToSEXP(const std::string &v) {
     SETCAR(t, obj);
 
     PROTECT(result = R_tryEval(s, R_GlobalEnv, &status));
-    if (status != 0) {
-        // Error handling
-    }
 
     UNPROTECT_PTR(s);
     UNPROTECT_PTR(t);
     UNPROTECT_PTR(obj);
+
+    if (status != 0) {
+        this->rLog->log(RServerLogLevel::WARNINGS, "Could not convert bytea to R object");
+    }
 
     return result;
 }
@@ -73,8 +74,8 @@ bool ConvertToProtoBuf::boolToProtoBuf(SEXP v) {
             res = (bool)asReal(v) == 0 ? 0 : 1;
             break;
         default:
+            this->rLog->log(RServerLogLevel::WARNINGS, "Could not convert R object to bool");
             break;
-            // TODO: try-catch exception
     }
     return res;
 }
@@ -92,8 +93,8 @@ int32_t ConvertToProtoBuf::intToProtoBuf(SEXP v) {
             res = (int32_t)asReal(v);
             break;
         default:
+            this->rLog->log(RServerLogLevel::WARNINGS, "Could not convert R object to int");
             break;
-            // TODO: try-catch exception
     }
     return res;
 }
@@ -111,15 +112,15 @@ double ConvertToProtoBuf::realToProtoBuf(SEXP v) {
             res = asReal(v);
             break;
         default:
+            this->rLog->log(RServerLogLevel::WARNINGS, "Could not convert R object to real");
             break;
-            // TODO: try-catch exception
     }
     return res;
 }
 
 std::string ConvertToProtoBuf::textToProtoBuf(SEXP v) {
     PrintValue(asChar(v));
-    this->rLog.log(RServerLogLevel::LOGS, "get string is %s", CHAR(asChar(v)));
+    this->rLog->log(RServerLogLevel::LOGS, "get string is %s", CHAR(asChar(v)));
     return std::string(CHAR(asChar(v)));
 }
 
@@ -131,9 +132,9 @@ std::string ConvertToProtoBuf::byteaToProtoBuf(SEXP v) {
     std::string result;
 
     /*
-     * Need to construct a call to
-     * serialize(rval, NULL)
-     */
+ * Need to construct a call to
+ * serialize(rval, NULL)
+ */
     PROTECT(t = s = allocList(3));
     SET_TYPEOF(s, LANGSXP);
     SETCAR(t, install("serialize"));
@@ -144,15 +145,16 @@ std::string ConvertToProtoBuf::byteaToProtoBuf(SEXP v) {
 
     PROTECT(obj = R_tryEval(s, R_GlobalEnv, &status));
     if (status != 0) {
-        this->rLog.log(RServerLogLevel::WARNINGS, "Cannot serialize object");
-        // TODO: error handling
+        UNPROTECT_PTR(s);
+        UNPROTECT_PTR(obj);
+        this->rLog->log(RServerLogLevel::WARNINGS, "Cannot serialize object");
     }
 
     len = LENGTH(obj);
-    this->rLog.log(RServerLogLevel::LOGS, "length is %d", len);
+    this->rLog->log(RServerLogLevel::LOGS, "length is %d", len);
     bytesArray = (char *)RAW(obj);
     result = std::string(bytesArray, bytesArray + len);
-    this->rLog.log(RServerLogLevel::LOGS, "result is %d", result.size());
+    this->rLog->log(RServerLogLevel::LOGS, "result is %d", result.size());
     UNPROTECT_PTR(s);
     UNPROTECT_PTR(obj);
 

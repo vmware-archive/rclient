@@ -83,14 +83,17 @@ class PlcRuntime {
     virtual ReturnStatus execute() = 0;
     virtual ReturnStatus getResults(CallResponse *results) = 0;
     virtual void cleanup() = 0;
+
+    virtual void setLogger(RServerLog *log) = 0;
     virtual ~PlcRuntime() {}
 };
 
 class RCoreRuntime : public PlcRuntime {
    public:
-    explicit RCoreRuntime()
+    explicit RCoreRuntime(RServerLog *rLog)
         : rCode(nullptr), rArgument(nullptr), rFunc(nullptr), rResults(nullptr) {
         this->runType = R;
+        this->rLog = rLog;
     };
 
     virtual ReturnStatus init() override;
@@ -103,6 +106,8 @@ class RCoreRuntime : public PlcRuntime {
 
     virtual void cleanup() override;
 
+    void setLogger(RServerLog *log) { this->rLog = log; }
+
     virtual ~RCoreRuntime() {};
 
    protected:
@@ -112,10 +117,10 @@ class RCoreRuntime : public PlcRuntime {
     SEXP rResults;
     PlcRuntimeType runType;
     PlcDataType returnType;
-    RServerLog rLog;
+    RServerLog *rLog;
     // TODO: add cache for further requests
 
-    int loadRCmd(const std::string &cmd);
+    void loadRCmd(const std::string &cmd);
     std::string getLoadSelfRefCmd();
     std::string getRsourceCode(const struct userFunction &userCode);
     ReturnStatus parseRCode(const std::string &code);

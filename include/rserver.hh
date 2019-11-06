@@ -28,9 +28,13 @@ using grpc::Status;
 #define IPC_CLIENT_DIR "/tmp/plcontainer"
 class RServerRPC final : public PLContainer::Service {
    public:
-    explicit RServerRPC() { this->runtime = nullptr; }
+    RServerRPC(RServerLog *rLog) {
+        this->runtime = nullptr;
+        this->rLog = rLog;
+    }
 
-    void initRCore();
+    virtual void initRCore();
+    void setLogger(RServerLog *log) { this->rLog = log; }
 
     virtual Status FunctionCall(ServerContext *context, const CallRequest *callRequest,
                                 CallResponse *result) override;
@@ -39,25 +43,33 @@ class RServerRPC final : public PLContainer::Service {
 
    private:
     PlcRuntime *runtime;
-    RServerLog rLog;
+    RServerLog *rLog;
 };
 
 class RServer {
    public:
-    explicit RServer(bool standAloneMode) { this->standAloneMode = standAloneMode; }
+    RServer(bool standAloneMode, RServerLog *rLog) {
+        this->standAloneMode = standAloneMode;
+        this->rLog = rLog;
+        server = new RServerRPC(rLog);
+    }
 
     virtual int initServer(const std::string &udsFile);
     virtual int initServer();
 
     virtual int startServer();
 
-    virtual ~RServer() {};
+    void setLogger(RServerLog *log) { this->rLog = log; }
+
+    virtual ~RServer() {
+        delete server;
+    };
 
    private:
     bool standAloneMode;
     std::string udsAddress;
-    RServerRPC server;
-    RServerLog rLog;
+    RServerRPC *server;
+    RServerLog *rLog;
 
     void udsCheck(const std::string &uds);
 };

@@ -13,20 +13,22 @@
 
 class ConvertToSEXP {
    public:
-    ConvertToSEXP() {}
+    ConvertToSEXP(RServerLog *rLog) { this->rLog = rLog; }
     SEXP boolToSEXP(const bool &v);
     SEXP intToSEXP(const int32_t &v);
     SEXP realToSEXP(const double &v);
     SEXP textToSEXP(const std::string &v);
     SEXP byteaToSEXP(const std::string &v);
 
+    void setLogger(RServerLog *log) { this->rLog = log; }
+
    private:
-    RServerLog rLog;
+    RServerLog *rLog;
 };
 
 class ConvertToProtoBuf {
    public:
-    ConvertToProtoBuf() {}
+    ConvertToProtoBuf(RServerLog *rLog) { this->rLog = rLog; }
 
     bool boolToProtoBuf(SEXP v);
     int32_t intToProtoBuf(SEXP v);
@@ -34,8 +36,10 @@ class ConvertToProtoBuf {
     std::string textToProtoBuf(SEXP v);
     std::string byteaToProtoBuf(SEXP v);
 
+    void setLogger(RServerLog *log) { this->rLog = log; }
+
    private:
-    RServerLog rLog;
+    RServerLog *rLog;
 };
 
 #endif  // PLC_RTYPRCONVERTER_H
