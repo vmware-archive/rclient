@@ -92,9 +92,9 @@ ReturnStatus RCoreRuntime::init() {
 
     r_home = getenv("R_HOME");
     /*
-* Stop R using its own signal handlers Otherwise, R will prompt the user for
-what to do and will hang in the container
-*/
+         * Stop R using its own signal handlers Otherwise, R will prompt the user for
+           what to do and will hang in the container
+         */
     R_SignalHandlers = 0;
     if (r_home == NULL) {
         /* TODO: fix if R_HOME is not set (i.e., defalut vaule) */
@@ -110,9 +110,9 @@ what to do and will hang in the container
     }
 
     /*
-* temporarily turn off R error reporting -- it will be turned back on
-* once the custom R error handler is installed from the plr library
-*/
+         * temporarily turn off R error reporting -- it will be turned back on
+         * once the custom R error handler is installed from the plr library
+         */
 
     this->loadRCmd(cmds[0].c_str());
 

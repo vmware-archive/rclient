@@ -66,6 +66,7 @@ class RServerWarningException : public std::exception {
 class LogPrinter {
    public:
     virtual void print(std::string &logs) = 0;
+    virtual ~LogPrinter() {};
 };
 
 class FileLogPrinter : public LogPrinter {
@@ -105,6 +106,8 @@ class RServerLog {
     void setLogLevel(RServerLogLevel level) { this->logLevel = level; }
     std::string getLogBuffer() { return this->localBuffer; }
     void resetLogBuffer() { this->localBuffer.clear(); }
+
+    ~RServerLog() { delete printer; }
 
    private:
     RServerLogLevel logLevel;

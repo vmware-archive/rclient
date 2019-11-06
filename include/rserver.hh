@@ -61,7 +61,9 @@ class RServer {
 
     void setLogger(RServerLog *log) { this->rLog = log; }
 
-    virtual ~RServer() {};
+    virtual ~RServer() {
+        delete server;
+    };
 
    private:
     bool standAloneMode;
