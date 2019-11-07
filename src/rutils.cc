@@ -47,7 +47,10 @@ void RServerLog::log(RServerLogLevel lvl, const char *format, ...) {
     }
 }
 
-void FileLogPrinter::print(std::string &logs) { this->file << logs + "\n"; }
+void FileLogPrinter::print(std::string &logs) {
+    this->file << logs + "\n";
+    this->file.flush();
+}
 
 void StdLogPrinter::print(std::string &logs) {
     fprintf(stdout, logs.c_str());
