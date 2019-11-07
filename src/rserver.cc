@@ -25,7 +25,7 @@ int RServer::startServer() {
 
     if (this->standAloneMode == false) {
         this->rLog->log(RServerLogLevel::LOGS, "Container mode, check uds permission");
-        this->udsCheck(this->udsAddress);
+        this->udsCheck(UDS_SHARED_FILE);
     }
 
     this->rLog->log(RServerLogLevel::LOGS, "Server is waiting for query");
@@ -54,13 +54,11 @@ void RServer::udsCheck(const std::string &uds) {
     gid_t qe_gid;
     long val;
 
-    /*
-* The path owner should be generally the uid, but we are not 100% sure
-* about this for current/future backends, so we still use environment
-* variable, instead of extracting them via reading the owner of the path.
-*/
+    // The path owner should be generally the uid, but we are not 100% sure
+    // about this for current/future backends, so we still use environment
+    // variable, instead of extracting them via reading the owner of the path.
 
-    /* Get executor uid: for permission of the unix domain socket file. */
+    // Get executor uid: for permission of the unix domain socket file.
 
     if ((env_str = getenv("EXECUTOR_UID")) == NULL)
         this->rLog->log(RServerLogLevel::ERRORS,
@@ -73,7 +71,7 @@ void RServer::udsCheck(const std::string &uds) {
     }
     qe_uid = val;
 
-    /* Get executor gid: for permission of the unix domain socket file. */
+    // Get executor gid: for permission of the unix domain socket file.
     if ((env_str = getenv("EXECUTOR_GID")) == NULL)
         this->rLog->log(RServerLogLevel::ERRORS,
                         "EXECUTOR_GID is not set, something wrong on QE side");
@@ -85,9 +83,9 @@ void RServer::udsCheck(const std::string &uds) {
     }
     qe_gid = val;
 
-    /* Change ownership & permission for the file for unix domain socket so
-* code on the QE side could access it and clean up it later.
-*/
+    // Change ownership & permission for the file for unix domain socket so
+    // code on the QE side could access it and clean up it later.
+
     if (chown(uds.c_str(), qe_uid, qe_gid) < 0)
         this->rLog->log(RServerLogLevel::ERRORS,
                         "Could not set ownership for file %s with owner %d, "

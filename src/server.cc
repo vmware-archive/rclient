@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
                 log->log(RServerLogLevel::LOGS, "Server start in container mode in %s", argv[1]);
                 server->initServer();
             } else if (mode.compare("3") == 0) {
-                log = new RServerLog(RServerWorkingMode::CONTAINERDEBUG, std::string(argv[3]));
+                log = new RServerLog(RServerWorkingMode::CONTAINERDEBUG, std::string(argv[2]));
                 server = new RServer(false, log);
                 log->log(RServerLogLevel::LOGS,
                          "Server start in container debug mode in %s, output file is %s", argv[1],
