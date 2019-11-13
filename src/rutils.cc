@@ -53,8 +53,8 @@ void FileLogPrinter::print(std::string &logs) {
 }
 
 void StdLogPrinter::print(std::string &logs) {
-    fprintf(stdout, logs.c_str());
-    fprintf(stdout, "\n");
+    fprintf(stdout, "%s", logs.c_str());
+    fprintf(stdout, "%s", "\n");
     fflush(stdout);
 }
 
