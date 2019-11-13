@@ -19,6 +19,8 @@
 #undef Free
 #undef length
 
+#undef error
+
 #define MAX_SERVER_LOG_BUFFER_SIZE 2 * 1024 * 1024
 #define MAX_MESSAGE_LINE_LENGTH 8 * 1024
 
