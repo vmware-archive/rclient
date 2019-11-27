@@ -92,9 +92,9 @@ ReturnStatus RCoreRuntime::init() {
 
     r_home = getenv("R_HOME");
     /*
-         * Stop R using its own signal handlers Otherwise, R will prompt the user for
-           what to do and will hang in the container
-         */
+* Stop R using its own signal handlers Otherwise, R will prompt the user for
+what to do and will hang in the container
+*/
     R_SignalHandlers = 0;
     if (r_home == NULL) {
         /* TODO: fix if R_HOME is not set (i.e., defalut vaule) */
@@ -110,9 +110,9 @@ ReturnStatus RCoreRuntime::init() {
     }
 
     /*
-         * temporarily turn off R error reporting -- it will be turned back on
-         * once the custom R error handler is installed from the plr library
-         */
+     * temporarily turn off R error reporting -- it will be turned back on
+     * once the custom R error handler is installed from the plr library
+     */
 
     this->loadRCmd(cmds[0].c_str());
 
@@ -139,6 +139,14 @@ ReturnStatus RCoreRuntime::prepare(const CallRequest *callRequest) {
     this->setArgumentValues(callRequest);
 
     this->returnType = callRequest->rettype();
+
+    if (callRequest->rettype() == PlcDataType::COMPOSITE) {
+        // We also need to copy subtypes of UDT as this stage
+        for (int i = 0; i < callRequest->subreturntype_size(); i++) {
+            this->returnSubType.emplace_back(callRequest->subreturntype(i));
+        }
+    }
+
     return ReturnStatus::OK;
 }
 
@@ -215,6 +223,10 @@ ReturnStatus RCoreRuntime::getResults(CallResponse *results) {
             ScalarData *data = ret->mutable_scalarvalue();
             data->set_type(PlcDataType::BYTEA);
             data->set_byteavalue(convert->byteaToProtoBuf(this->rResults));
+        } break;
+        case PlcDataType::COMPOSITE: {
+            CompositeData *cdata = ret->mutable_compositevalue();
+            convert->compositeToProtoBuf(this->rResults, this->returnSubType, cdata);
         } break;
         default:
             delete convert;
@@ -381,6 +393,11 @@ ReturnStatus RCoreRuntime::setArgumentValues(const CallRequest *callRequest) {
             }
             case PlcDataType::BYTEA: {
                 rArg = convert->byteaToSEXP(callRequest->args()[count].scalarvalue().byteavalue());
+                break;
+            }
+            case PlcDataType::COMPOSITE: {
+                rArg = convert->compositeToSEXP(callRequest->args()[count].compositevalue());
+
                 break;
             }
             default:
