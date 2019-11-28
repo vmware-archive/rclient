@@ -22,14 +22,15 @@ class RConvTest : public testing::Test {
 };
 
 TEST_F(RConvTest, RConvResultsREAL) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
     src->set_name("test");
     src->set_src("return (1.2)");
-    request->set_rettype(PlcDataType::REAL);
+    ret->set_type(PlcDataType::REAL);
 
     EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
     EXPECT_EQ(ReturnStatus::OK, core->execute());
@@ -39,14 +40,15 @@ TEST_F(RConvTest, RConvResultsREAL) {
 }
 
 TEST_F(RConvTest, RConvResultsLOGICAL) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
     src->set_name("test");
     src->set_src("return (FALSE)");
-    request->set_rettype(PlcDataType::LOGICAL);
+    ret->set_type(PlcDataType::LOGICAL);
 
     EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
     EXPECT_EQ(ReturnStatus::OK, core->execute());
@@ -56,14 +58,15 @@ TEST_F(RConvTest, RConvResultsLOGICAL) {
 }
 
 TEST_F(RConvTest, RConvResultsINT) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
     src->set_name("test");
     src->set_src("return (10000)");
-    request->set_rettype(PlcDataType::INT);
+    ret->set_type(PlcDataType::INT);
 
     EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
     EXPECT_EQ(ReturnStatus::OK, core->execute());
@@ -73,14 +76,15 @@ TEST_F(RConvTest, RConvResultsINT) {
 }
 
 TEST_F(RConvTest, RConvResultsTEXT) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
     src->set_name("test");
     src->set_src("return (\"abc\")");
-    request->set_rettype(PlcDataType::TEXT);
+    ret->set_type(PlcDataType::TEXT);
 
     EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
     EXPECT_EQ(ReturnStatus::OK, core->execute());
@@ -90,14 +94,15 @@ TEST_F(RConvTest, RConvResultsTEXT) {
 }
 
 TEST_F(RConvTest, RConvArgLOGICAL) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
 
     PlcValue *arg = request->add_args();
     ScalarData *data;
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
-    request->set_rettype(PlcDataType::LOGICAL);
+    ret->set_type(PlcDataType::LOGICAL);
 
     src->set_name("test");
     src->set_src("return (a)");
@@ -115,14 +120,15 @@ TEST_F(RConvTest, RConvArgLOGICAL) {
 }
 
 TEST_F(RConvTest, RConvArgINT) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
 
     PlcValue *arg = request->add_args();
     ScalarData *data;
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
-    request->set_rettype(PlcDataType::INT);
+    ret->set_type(PlcDataType::INT);
 
     src->set_name("test");
     src->set_src("return (b)");
@@ -140,14 +146,15 @@ TEST_F(RConvTest, RConvArgINT) {
 }
 
 TEST_F(RConvTest, RConvArgREAL) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
 
     PlcValue *arg = request->add_args();
     ScalarData *data;
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
-    request->set_rettype(PlcDataType::REAL);
+    ret->set_type(PlcDataType::REAL);
 
     src->set_name("test");
     src->set_src("return (a)");
@@ -165,14 +172,15 @@ TEST_F(RConvTest, RConvArgREAL) {
 }
 
 TEST_F(RConvTest, RConvArgTEXT) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
 
     PlcValue *arg = request->add_args();
     ScalarData *data;
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
-    request->set_rettype(PlcDataType::TEXT);
+    ret->set_type(PlcDataType::TEXT);
 
     src->set_name("test");
     src->set_src("return (a)");
@@ -190,8 +198,8 @@ TEST_F(RConvTest, RConvArgTEXT) {
 }
 
 TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestOne) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
     CompositeData *data;
     ScalarData *subType1;
     ScalarData *subType2;
@@ -199,8 +207,9 @@ TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestOne) {
     PlcValue *arg = request->add_args();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
-    request->set_rettype(PlcDataType::INT);
+    ret->set_type(PlcDataType::INT);
 
     src->set_name("test");
     src->set_src(
@@ -226,8 +235,8 @@ TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestOne) {
 }
 
 TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestTwo) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
     CompositeData *data;
     ScalarData *subType1;
     ScalarData *subType2;
@@ -235,8 +244,9 @@ TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestTwo) {
     PlcValue *arg = request->add_args();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
-    request->set_rettype(PlcDataType::INT);
+    ret->set_type(PlcDataType::INT);
 
     src->set_name("test");
     src->set_src(
@@ -262,8 +272,8 @@ TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestTwo) {
 }
 
 TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestOneForName) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
     CompositeData *data;
     ScalarData *subType1;
     ScalarData *subType2;
@@ -271,8 +281,9 @@ TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestOneForName) {
     PlcValue *arg = request->add_args();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
-    request->set_rettype(PlcDataType::INT);
+    ret->set_type(PlcDataType::INT);
 
     src->set_name("test");
     src->set_src(
@@ -301,8 +312,8 @@ TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestOneForName) {
 }
 
 TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestTwoForName) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
     CompositeData *data;
     ScalarData *subType1;
     ScalarData *subType2;
@@ -310,8 +321,9 @@ TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestTwoForName) {
     PlcValue *arg = request->add_args();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
-    request->set_rettype(PlcDataType::INT);
+    ret->set_type(PlcDataType::INT);
 
     src->set_name("test");
     src->set_src(
@@ -339,8 +351,8 @@ TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestTwoForName) {
 }
 
 TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestReal) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
     CompositeData *data;
     ScalarData *subType1;
     ScalarData *subType2;
@@ -348,8 +360,9 @@ TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestReal) {
     PlcValue *arg = request->add_args();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
-    request->set_rettype(PlcDataType::INT);
+    ret->set_type(PlcDataType::INT);
 
     src->set_name("test");
     src->set_src(
@@ -377,8 +390,8 @@ TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestReal) {
 }
 
 TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestText) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
     CompositeData *data;
     ScalarData *subType1;
     ScalarData *subType2;
@@ -386,8 +399,9 @@ TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestText) {
     PlcValue *arg = request->add_args();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
-    request->set_rettype(PlcDataType::INT);
+    ret->set_type(PlcDataType::INT);
 
     src->set_name("test");
     src->set_src(
@@ -416,17 +430,18 @@ TEST_F(RConvTest, RConvArgUdtWithTwoElementsTestText) {
 }
 
 TEST_F(RConvTest, RConvResultsUdtWithTwoElements) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
     src->set_name("test");
     src->set_src(
         "a=TRUE\n b=as.integer(1)\n c=as.integer(2)\n d=3\n e='foo'\n x<-data.frame(a,b,c,d,e)");
-    request->set_rettype(PlcDataType::COMPOSITE);
-    request->add_subreturntype(PlcDataType::LOGICAL);
-    request->add_subreturntype(PlcDataType::INT);
+    ret->set_type(PlcDataType::COMPOSITE);
+    ret->add_subtypes(PlcDataType::LOGICAL);
+    ret->add_subtypes(PlcDataType::INT);
 
     EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
     EXPECT_EQ(ReturnStatus::OK, core->execute());
@@ -437,21 +452,22 @@ TEST_F(RConvTest, RConvResultsUdtWithTwoElements) {
 }
 
 TEST_F(RConvTest, RConvResultsUdtWithFiveElements) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
     src->set_name("test");
     src->set_src(
         "a=TRUE\n b=as.integer(1)\n c=as.integer(2)\n d=3\n e='foo'\n x<-data.frame(a,b,c,d,e)\n "
         "return(x)");
-    request->set_rettype(PlcDataType::COMPOSITE);
-    request->add_subreturntype(PlcDataType::LOGICAL);
-    request->add_subreturntype(PlcDataType::INT);
-    request->add_subreturntype(PlcDataType::INT);
-    request->add_subreturntype(PlcDataType::REAL);
-    request->add_subreturntype(PlcDataType::TEXT);
+    ret->set_type(PlcDataType::COMPOSITE);
+    ret->add_subtypes(PlcDataType::LOGICAL);
+    ret->add_subtypes(PlcDataType::INT);
+    ret->add_subtypes(PlcDataType::INT);
+    ret->add_subtypes(PlcDataType::REAL);
+    ret->add_subtypes(PlcDataType::TEXT);
 
     EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
     EXPECT_EQ(ReturnStatus::OK, core->execute());
@@ -465,19 +481,20 @@ TEST_F(RConvTest, RConvResultsUdtWithFiveElements) {
 }
 
 TEST_F(RConvTest, RConvResultsUdtWithFiveElementsError) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
     src->set_name("test");
     src->set_src("return(10)");
-    request->set_rettype(PlcDataType::COMPOSITE);
-    request->add_subreturntype(PlcDataType::LOGICAL);
-    request->add_subreturntype(PlcDataType::INT);
-    request->add_subreturntype(PlcDataType::INT);
-    request->add_subreturntype(PlcDataType::REAL);
-    request->add_subreturntype(PlcDataType::TEXT);
+    ret->set_type(PlcDataType::COMPOSITE);
+    ret->add_subtypes(PlcDataType::LOGICAL);
+    ret->add_subtypes(PlcDataType::INT);
+    ret->add_subtypes(PlcDataType::INT);
+    ret->add_subtypes(PlcDataType::REAL);
+    ret->add_subtypes(PlcDataType::TEXT);
 
     EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
     EXPECT_EQ(ReturnStatus::OK, core->execute());

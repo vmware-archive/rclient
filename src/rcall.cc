@@ -138,12 +138,12 @@ ReturnStatus RCoreRuntime::prepare(const CallRequest *callRequest) {
 
     this->setArgumentValues(callRequest);
 
-    this->returnType = callRequest->rettype();
+    this->returnType = callRequest->rettype().type();
 
-    if (callRequest->rettype() == PlcDataType::COMPOSITE) {
+    if (callRequest->rettype().type() == PlcDataType::COMPOSITE) {
         // We also need to copy subtypes of UDT as this stage
-        for (int i = 0; i < callRequest->subreturntype_size(); i++) {
-            this->returnSubType.emplace_back(callRequest->subreturntype(i));
+        for (int i = 0; i < callRequest->rettype().subtypes_size(); i++) {
+            this->returnSubType.emplace_back(callRequest->rettype().subtypes(i));
         }
     }
 
