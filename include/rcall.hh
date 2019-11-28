@@ -10,6 +10,7 @@
 #include <iostream>
 #include <string>
 #include <exception>
+#include <vector>
 
 #include "rutils.hh"
 
@@ -117,6 +118,7 @@ class RCoreRuntime : public PlcRuntime {
     SEXP rResults;
     PlcRuntimeType runType;
     PlcDataType returnType;
+    std::vector<PlcDataType> returnSubType;
     RServerLog *rLog;
     // TODO: add cache for further requests
 

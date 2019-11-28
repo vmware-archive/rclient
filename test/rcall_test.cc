@@ -1,7 +1,7 @@
 #include "rcall.hh"
 #include "gtest/gtest.h"
-#include "plcontainer.pb.h"
 #include "plcontainer.grpc.pb.h"
+#include "plcontainer.pb.h"
 
 using namespace plcontainer;
 
@@ -24,7 +24,7 @@ class RCallTest : public testing::Test {
 TEST_F(RCallTest, RCoreInit) { EXPECT_EQ(ReturnStatus::OK, core->init()); }
 
 TEST_F(RCallTest, RCorePrePareNoArgument) {
-    CallRequest *request = new CallRequest();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
     ProcSrc *src = request->mutable_proc();
     src->set_name("test");
     src->set_src("return (1)");
@@ -32,7 +32,7 @@ TEST_F(RCallTest, RCorePrePareNoArgument) {
 }
 
 TEST_F(RCallTest, RCorePrePareWithOneArgument) {
-    CallRequest *request = new CallRequest();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
     PlcValue *arg = request->add_args();
     ScalarData *data;
     ProcSrc *src = request->mutable_proc();
@@ -48,7 +48,7 @@ TEST_F(RCallTest, RCorePrePareWithOneArgument) {
 }
 
 TEST_F(RCallTest, RCorePrePareWithTwoArgument) {
-    CallRequest *request = new CallRequest();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
     PlcValue *arg1 = request->add_args();
     PlcValue *arg2 = request->add_args();
     ScalarData *data1;
@@ -71,7 +71,7 @@ TEST_F(RCallTest, RCorePrePareWithTwoArgument) {
 }
 
 TEST_F(RCallTest, RCoreEXECWithNoArgument) {
-    CallRequest *request = new CallRequest();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
     ProcSrc *src = request->mutable_proc();
 
     src->set_name("test");
@@ -82,7 +82,7 @@ TEST_F(RCallTest, RCoreEXECWithNoArgument) {
 }
 
 TEST_F(RCallTest, RCoreEXECWithOneArgument) {
-    CallRequest *request = new CallRequest();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
     PlcValue *arg = request->add_args();
     ScalarData *data;
     ProcSrc *src = request->mutable_proc();
@@ -99,7 +99,7 @@ TEST_F(RCallTest, RCoreEXECWithOneArgument) {
 }
 
 TEST_F(RCallTest, RCoreEXECWithNoArgumentAndReturnHasArgument) {
-    CallRequest *request = new CallRequest();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
     ProcSrc *src = request->mutable_proc();
 
     src->set_name("test");
@@ -110,14 +110,15 @@ TEST_F(RCallTest, RCoreEXECWithNoArgumentAndReturnHasArgument) {
 }
 
 TEST_F(RCallTest, RCoreGetResultsWithNoArgumentINT) {
-    CallRequest *request = new CallRequest();
-    CallResponse *response = new CallResponse();
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
 
     ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
 
     src->set_name("test");
     src->set_src("return (1)");
-    request->set_rettype(PlcDataType::INT);
+    ret->set_type(PlcDataType::INT);
 
     EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
     EXPECT_EQ(ReturnStatus::OK, core->execute());
