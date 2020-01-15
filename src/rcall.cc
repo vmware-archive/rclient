@@ -140,8 +140,9 @@ ReturnStatus RCoreRuntime::prepare(const CallRequest *callRequest) {
 
     this->returnType = callRequest->rettype().type();
 
-    if (callRequest->rettype().type() == PlcDataType::COMPOSITE) {
-        // We also need to copy subtypes of UDT as this stage
+    if (callRequest->rettype().type() == PlcDataType::COMPOSITE ||
+        callRequest->rettype().type() == PlcDataType::ARRAY) {
+        // We also need to copy subtypes of UDT/Array as this stage
         for (int i = 0; i < callRequest->rettype().subtypes_size(); i++) {
             this->returnSubType.emplace_back(callRequest->rettype().subtypes(i));
         }
@@ -202,31 +203,36 @@ ReturnStatus RCoreRuntime::getResults(CallResponse *results) {
         case PlcDataType::LOGICAL: {
             ScalarData *data = ret->mutable_scalarvalue();
             data->set_type(PlcDataType::LOGICAL);
-            data->set_logicalvalue(convert->boolToProtoBuf(this->rResults));
+            convert->scalarToProtobuf(this->rResults, this->returnType, data);
         } break;
         case PlcDataType::INT: {
             ScalarData *data = ret->mutable_scalarvalue();
             data->set_type(PlcDataType::INT);
-            data->set_intvalue(convert->intToProtoBuf(this->rResults));
+            convert->scalarToProtobuf(this->rResults, this->returnType, data);
         } break;
         case PlcDataType::REAL: {
             ScalarData *data = ret->mutable_scalarvalue();
             data->set_type(PlcDataType::REAL);
-            data->set_realvalue(convert->realToProtoBuf(this->rResults));
+            convert->scalarToProtobuf(this->rResults, this->returnType, data);
         } break;
         case PlcDataType::TEXT: {
             ScalarData *data = ret->mutable_scalarvalue();
             data->set_type(PlcDataType::TEXT);
-            data->set_stringvalue(convert->textToProtoBuf(this->rResults));
+            convert->scalarToProtobuf(this->rResults, this->returnType, data);
         } break;
         case PlcDataType::BYTEA: {
             ScalarData *data = ret->mutable_scalarvalue();
             data->set_type(PlcDataType::BYTEA);
-            data->set_byteavalue(convert->byteaToProtoBuf(this->rResults));
+            convert->scalarToProtobuf(this->rResults, this->returnType, data);
         } break;
         case PlcDataType::COMPOSITE: {
             CompositeData *cdata = ret->mutable_compositevalue();
             convert->compositeToProtoBuf(this->rResults, this->returnSubType, cdata);
+        } break;
+        case PlcDataType::ARRAY: {
+            ArrayData *adata = ret->mutable_arrayvalue();
+            // Currently, we only support 1-D array, so use index=0
+            convert->arrayToProtoBuf(this->rResults, this->returnSubType[0], adata);
         } break;
         default:
             delete convert;
@@ -397,7 +403,10 @@ ReturnStatus RCoreRuntime::setArgumentValues(const CallRequest *callRequest) {
             }
             case PlcDataType::COMPOSITE: {
                 rArg = convert->compositeToSEXP(callRequest->args()[count].compositevalue());
-
+                break;
+            }
+            case PlcDataType::ARRAY: {
+                rArg = convert->arrayToSEXP(callRequest->args()[count].arrayvalue());
                 break;
             }
             default:
