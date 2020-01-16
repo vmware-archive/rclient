@@ -1,8 +1,10 @@
-#include "rtypeconverter.hh"
+#include <cmath>
+
 #include "gtest/gtest.h"
 #include "plcontainer.grpc.pb.h"
 #include "plcontainer.pb.h"
 #include "rcall.hh"
+#include "rtypeconverter.hh"
 
 using namespace plcontainer;
 
@@ -500,4 +502,519 @@ TEST_F(RConvTest, RConvResultsUdtWithFiveElementsError) {
     EXPECT_EQ(ReturnStatus::OK, core->execute());
     EXPECT_THROW(core->getResults(response), RServerWarningException);
     EXPECT_EQ(PlcDataType::COMPOSITE, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvArgArrayWithOneArgsLogical) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::INT);
+
+    src->set_name("test");
+    src->set_src("mean(a)");
+    arg->set_name("a");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::LOGICAL);
+
+    element = data->add_values();
+    element->set_logicalvalue(true);
+    element = data->add_values();
+    element->set_logicalvalue(true);
+    element = data->add_values();
+    element->set_logicalvalue(true);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(1, response->results()[0].scalarvalue().intvalue());
+    EXPECT_EQ(PlcDataType::INT, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvArgArrayWithOneArgsINT) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::INT);
+
+    src->set_name("test");
+    src->set_src("mean(a)");
+    arg->set_name("a");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::INT);
+
+    element = data->add_values();
+    element->set_intvalue(1);
+    element = data->add_values();
+    element->set_intvalue(2);
+    element = data->add_values();
+    element->set_intvalue(3);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(2, response->results()[0].scalarvalue().intvalue());
+    EXPECT_EQ(PlcDataType::INT, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvArgArrayWithOneArgsReal) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::REAL);
+
+    src->set_name("test");
+    src->set_src("mean(a)");
+    arg->set_name("a");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::REAL);
+
+    element = data->add_values();
+    element->set_realvalue(0.1);
+    element = data->add_values();
+    element->set_realvalue(0.2);
+    element = data->add_values();
+    element->set_realvalue(0.3);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(0.2, response->results()[0].scalarvalue().realvalue());
+    EXPECT_EQ(PlcDataType::REAL, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvArgArrayWithOneArgsText) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::TEXT);
+
+    src->set_name("test");
+    src->set_src("paste(a,collapse=' ')");
+    arg->set_name("a");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::TEXT);
+
+    element = data->add_values();
+    element->set_stringvalue("a");
+    element = data->add_values();
+    element->set_stringvalue("b");
+    element = data->add_values();
+    element->set_stringvalue("c");
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ("a b c", response->results()[0].scalarvalue().stringvalue());
+    EXPECT_EQ(PlcDataType::TEXT, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvArgArrayWithOneArgsBytea) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::TEXT);
+
+    src->set_name("test");
+    src->set_src("paste(a,collapse=' ')");
+    arg->set_name("a");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::BYTEA);
+
+    element = data->add_values();
+    element->set_byteavalue("a");
+    element = data->add_values();
+    element->set_byteavalue("b");
+    element = data->add_values();
+    element->set_byteavalue("c");
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ("a b c", response->results()[0].scalarvalue().stringvalue());
+    EXPECT_EQ(PlcDataType::TEXT, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvArgArrayWithOneArgsNA) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::REAL);
+
+    src->set_name("test");
+    src->set_src("mean(a)");
+    arg->set_name("a");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::REAL);
+
+    element = data->add_values();
+    element->set_realvalue(0.1);
+    element = data->add_values();
+    element->set_isnull(true);
+    element = data->add_values();
+    element->set_realvalue(0.3);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(PlcDataType::REAL, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvArgArrayWithTwoArgsINT) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg1 = request->add_args();
+    PlcValue *arg2 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::INT);
+
+    src->set_name("test");
+    src->set_src("mean(a*b)");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::ARRAY);
+    data = arg1->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::INT);
+
+    element = data->add_values();
+    element->set_intvalue(1);
+    element = data->add_values();
+    element->set_intvalue(2);
+    element = data->add_values();
+    element->set_intvalue(3);
+
+    arg2->set_name("b");
+    arg2->set_type(PlcDataType::ARRAY);
+    data = arg2->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::INT);
+
+    element = data->add_values();
+    element->set_intvalue(1);
+    element = data->add_values();
+    element->set_intvalue(2);
+    element = data->add_values();
+    element->set_intvalue(3);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(4, response->results()[0].scalarvalue().intvalue());
+    EXPECT_EQ(PlcDataType::INT, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnArrayWithTwoArgsINT) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg1 = request->add_args();
+    PlcValue *arg2 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::ARRAY);
+    ret->add_subtypes(PlcDataType::INT);
+
+    src->set_name("test");
+    src->set_src("a*b");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::ARRAY);
+    data = arg1->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::INT);
+
+    element = data->add_values();
+    element->set_intvalue(1);
+    element = data->add_values();
+    element->set_intvalue(2);
+    element = data->add_values();
+    element->set_intvalue(3);
+
+    arg2->set_name("b");
+    arg2->set_type(PlcDataType::ARRAY);
+    data = arg2->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::INT);
+
+    element = data->add_values();
+    element->set_intvalue(1);
+    element = data->add_values();
+    element->set_intvalue(2);
+    element = data->add_values();
+    element->set_intvalue(3);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(3, response->results()[0].arrayvalue().values_size());
+    EXPECT_EQ(PlcDataType::ARRAY, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnArrayWithTwoArgsLOGICAL) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg1 = request->add_args();
+    PlcValue *arg2 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::ARRAY);
+    ret->add_subtypes(PlcDataType::LOGICAL);
+
+    src->set_name("test");
+    src->set_src("a*b");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::ARRAY);
+    data = arg1->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::LOGICAL);
+
+    element = data->add_values();
+    element->set_logicalvalue(true);
+    element = data->add_values();
+    element->set_logicalvalue(false);
+    element = data->add_values();
+    element->set_logicalvalue(true);
+
+    arg2->set_name("b");
+    arg2->set_type(PlcDataType::ARRAY);
+    data = arg2->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::LOGICAL);
+
+    element = data->add_values();
+    element->set_logicalvalue(true);
+    element = data->add_values();
+    element->set_logicalvalue(true);
+    element = data->add_values();
+    element->set_logicalvalue(false);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(3, response->results()[0].arrayvalue().values_size());
+    EXPECT_EQ(PlcDataType::ARRAY, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnArrayWithTwoArgsREAL) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg1 = request->add_args();
+    PlcValue *arg2 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::ARRAY);
+    ret->add_subtypes(PlcDataType::REAL);
+
+    src->set_name("test");
+    src->set_src("a*b");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::ARRAY);
+    data = arg1->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::REAL);
+
+    element = data->add_values();
+    element->set_realvalue(1.5);
+    element = data->add_values();
+    element->set_realvalue(2.5);
+    element = data->add_values();
+    element->set_realvalue(3.5);
+
+    arg2->set_name("b");
+    arg2->set_type(PlcDataType::ARRAY);
+    data = arg2->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::REAL);
+
+    element = data->add_values();
+    element->set_realvalue(1.5);
+    element = data->add_values();
+    element->set_realvalue(2.5);
+    element = data->add_values();
+    element->set_realvalue(3.5);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(3, response->results()[0].arrayvalue().values_size());
+    EXPECT_EQ(PlcDataType::ARRAY, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnArrayWithTwoArgsTEXT) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg1 = request->add_args();
+    PlcValue *arg2 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::ARRAY);
+    ret->add_subtypes(PlcDataType::TEXT);
+
+    src->set_name("test");
+    src->set_src("a");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::ARRAY);
+    data = arg1->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::TEXT);
+
+    element = data->add_values();
+    element->set_stringvalue("aa");
+    element = data->add_values();
+    element->set_stringvalue("bb");
+    element = data->add_values();
+    element->set_stringvalue("cc");
+
+    arg2->set_name("b");
+    arg2->set_type(PlcDataType::ARRAY);
+    data = arg2->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::TEXT);
+
+    element = data->add_values();
+    element->set_stringvalue("aa");
+    element = data->add_values();
+    element->set_stringvalue("bb");
+    element = data->add_values();
+    element->set_stringvalue("cc");
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(3, response->results()[0].arrayvalue().values_size());
+    EXPECT_EQ(PlcDataType::ARRAY, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvArgArrayWithUDTError) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::TEXT);
+
+    src->set_name("test");
+    src->set_src("paste(a,collapse=' ')");
+    arg->set_name("a");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::COMPOSITE);
+
+    element = data->add_values();
+    element->set_stringvalue("a");
+    element = data->add_values();
+    element->set_stringvalue("b");
+    element = data->add_values();
+    element->set_stringvalue("c");
+
+    EXPECT_THROW(core->prepare(request), RServerWarningException);
+}
+
+TEST_F(RConvTest, RConvReturnArrayWithUDTError) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::ARRAY);
+    ret->add_subtypes(PlcDataType::COMPOSITE);
+
+    src->set_name("test");
+    src->set_src("mean(a)");
+    arg->set_name("a");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::REAL);
+
+    element = data->add_values();
+    element->set_realvalue(0.1);
+    element = data->add_values();
+    element->set_isnull(true);
+    element = data->add_values();
+    element->set_realvalue(0.3);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_THROW(core->getResults(response), RServerWarningException);
 }

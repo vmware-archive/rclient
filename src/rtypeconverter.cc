@@ -6,21 +6,19 @@
  */
 #include "rtypeconverter.hh"
 
-using namespace plcontainer;
-
-SEXP ConvertToSEXP::boolToSEXP(const bool &v) {
+SEXP ConvertToSEXP::boolToSEXP(const bool v) {
     SEXP result;
     PROTECT(result = ScalarLogical(v));
     return result;
 }
 
-SEXP ConvertToSEXP::intToSEXP(const int32_t &v) {
+SEXP ConvertToSEXP::intToSEXP(const int32_t v) {
     SEXP result;
     PROTECT(result = ScalarInteger(v));
     return result;
 }
 
-SEXP ConvertToSEXP::realToSEXP(const double &v) {
+SEXP ConvertToSEXP::realToSEXP(const double v) {
     SEXP result;
     PROTECT(result = ScalarReal(v));
     return result;
@@ -211,23 +209,23 @@ SEXP ConvertToSEXP::scalarToSEXP(const plcontainer::ScalarData &v) {
     }
 
     switch (v.type()) {
-        case PlcDataType::LOGICAL: {
+        case plcontainer::PlcDataType::LOGICAL: {
             result = this->boolToSEXP(v.logicalvalue());
             break;
         }
-        case PlcDataType::INT: {
+        case plcontainer::PlcDataType::INT: {
             result = this->intToSEXP(v.intvalue());
             break;
         }
-        case PlcDataType::REAL: {
+        case plcontainer::PlcDataType::REAL: {
             result = this->realToSEXP(v.realvalue());
             break;
         }
-        case PlcDataType::TEXT: {
+        case plcontainer::PlcDataType::TEXT: {
             result = this->textToSEXP(v.stringvalue());
             break;
         }
-        case PlcDataType::BYTEA: {
+        case plcontainer::PlcDataType::BYTEA: {
             result = this->byteaToSEXP(v.byteavalue());
             break;
         }
@@ -240,30 +238,31 @@ SEXP ConvertToSEXP::scalarToSEXP(const plcontainer::ScalarData &v) {
     return result;
 }
 
-void ConvertToProtoBuf::scalarToProtobuf(SEXP v, PlcDataType type, ScalarData *result) {
+void ConvertToProtoBuf::scalarToProtobuf(SEXP v, plcontainer::PlcDataType type,
+                                         plcontainer::ScalarData *result) {
     if (v == R_NilValue) {
         result->set_isnull(true);
         return;
     }
 
     switch (type) {
-        case PlcDataType::LOGICAL: {
+        case plcontainer::PlcDataType::LOGICAL: {
             result->set_logicalvalue(this->boolToProtoBuf(v));
             break;
         }
-        case PlcDataType::INT: {
+        case plcontainer::PlcDataType::INT: {
             result->set_intvalue(this->intToProtoBuf(v));
             break;
         }
-        case PlcDataType::REAL: {
+        case plcontainer::PlcDataType::REAL: {
             result->set_realvalue(this->realToProtoBuf(v));
             break;
         }
-        case PlcDataType::TEXT: {
+        case plcontainer::PlcDataType::TEXT: {
             result->set_stringvalue(this->textToProtoBuf(v));
             break;
         }
-        case PlcDataType::BYTEA: {
+        case plcontainer::PlcDataType::BYTEA: {
             result->set_byteavalue(this->byteaToProtoBuf(v));
             break;
         }
@@ -273,8 +272,8 @@ void ConvertToProtoBuf::scalarToProtobuf(SEXP v, PlcDataType type, ScalarData *r
     }
 }
 
-void ConvertToProtoBuf::compositeToProtoBuf(SEXP v, std::vector<PlcDataType> &subTypes,
-                                            CompositeData *result) {
+void ConvertToProtoBuf::compositeToProtoBuf(SEXP v, std::vector<plcontainer::PlcDataType> &subTypes,
+                                            plcontainer::CompositeData *result) {
     SEXP dfcol;
 
     if (!isFrame(v)) {
@@ -299,4 +298,223 @@ void ConvertToProtoBuf::compositeToProtoBuf(SEXP v, std::vector<PlcDataType> &su
         }
         UNPROTECT_PTR(dfcol);
     }
+}
+
+SEXP ConvertToSEXP::arrayToSEXP(const plcontainer::ArrayData &v) {
+    SEXP result, array_dims;
+    int length = v.values_size();
+
+    result = this->allocRVector(v.elementtype(), length);
+    switch (v.elementtype()) {
+        case plcontainer::PlcDataType::LOGICAL: {
+            for (int i = 0; i < length; i++) {
+                if (!v.values()[i].isnull()) {
+                    LOGICAL_DATA(result)[i] = v.values()[i].logicalvalue();
+                } else {
+                    LOGICAL_DATA(result)[i] = NA_LOGICAL;
+                }
+            }
+        } break;
+        case plcontainer::PlcDataType::INT: {
+            for (int i = 0; i < length; i++) {
+                if (!v.values()[i].isnull()) {
+                    INTEGER_DATA(result)[i] = v.values()[i].intvalue();
+                } else {
+                    INTEGER_DATA(result)[i] = NA_INTEGER;
+                }
+            }
+        } break;
+        case plcontainer::PlcDataType::REAL: {
+            for (int i = 0; i < length; i++) {
+                if (!v.values()[i].isnull()) {
+                    NUMERIC_DATA(result)[i] = v.values()[i].realvalue();
+                } else {
+                    NUMERIC_DATA(result)[i] = NA_REAL;
+                }
+            }
+        } break;
+        case plcontainer::PlcDataType::BYTEA: {
+            for (int i = 0; i < length; i++) {
+                if (!v.values()[i].isnull()) {
+                    SET_STRING_ELT(result, i,
+                                   COPY_TO_USER_STRING(v.values()[i].byteavalue().data()));
+                } else {
+                    SET_STRING_ELT(result, i, NA_STRING);
+                }
+            }
+        } break;
+        case plcontainer::PlcDataType::TEXT: {
+            for (int i = 0; i < length; i++) {
+                if (!v.values()[i].isnull()) {
+                    SET_STRING_ELT(result, i,
+                                   COPY_TO_USER_STRING(v.values()[i].stringvalue().c_str()));
+                } else {
+                    SET_STRING_ELT(result, i, NA_STRING);
+                }
+            }
+        } break;
+        default:
+            this->rLog->log(RServerLogLevel::WARNINGS,
+                            "Unsupport type in array argument, which is %d", v.elementtype());
+            PROTECT(result = R_NilValue);
+            break;
+    }
+
+    // Currently only support 1-D array
+    PROTECT(array_dims = allocVector(INTSXP, 1));
+    INTEGER_DATA(array_dims)[0] = length;
+    setAttrib(result, R_DimSymbol, array_dims);
+    UNPROTECT_PTR(array_dims);
+
+    return result;
+}
+
+void ConvertToProtoBuf::arrayToProtoBuf(SEXP v, plcontainer::PlcDataType type,
+                                        plcontainer::ArrayData *result) {
+    int length = Rf_length(v);
+
+    // convert R vector into Protobuf directly
+    switch (TYPEOF(v)) {
+        case LGLSXP: {
+            for (int i = 0; i < length; i++) {
+                plcontainer::ScalarData *element = result->add_values();
+                if (LOGICAL(v)[i] != NA_LOGICAL) {
+                    switch (type) {
+                        case plcontainer::PlcDataType::LOGICAL: {
+                            element->set_logicalvalue(LOGICAL(v)[i]);
+                        } break;
+                        case plcontainer::PlcDataType::INT: {
+                            element->set_intvalue((int32_t)LOGICAL(v)[i]);
+                        } break;
+                        case plcontainer::PlcDataType::REAL: {
+                            element->set_realvalue((double)LOGICAL(v)[i]);
+                        } break;
+                        case plcontainer::PlcDataType::TEXT: {
+                            element->set_stringvalue(std::to_string(LOGICAL(v)[i]));
+                        } break;
+                        case plcontainer::PlcDataType::BYTEA: {
+                            element->set_byteavalue(std::to_string(LOGICAL(v)[i]));
+                        } break;
+                        default:
+                            this->rLog->log(RServerLogLevel::WARNINGS, "Unsupport type in value %d",
+                                            type);
+                            break;
+                    }
+                } else {
+                    element->set_isnull(true);
+                }
+            }
+        } break;
+        case INTSXP: {
+            for (int i = 0; i < length; i++) {
+                plcontainer::ScalarData *element = result->add_values();
+                if (INTEGER(v)[i] != NA_INTEGER) {
+                    switch (type) {
+                        case plcontainer::PlcDataType::LOGICAL: {
+                            element->set_logicalvalue((bool)INTEGER(v)[i] == 0 ? 0 : 1);
+                        } break;
+                        case plcontainer::PlcDataType::INT: {
+                            element->set_intvalue(INTEGER(v)[i]);
+                        } break;
+                        case plcontainer::PlcDataType::REAL: {
+                            element->set_realvalue((double)INTEGER(v)[i]);
+                        } break;
+                        case plcontainer::PlcDataType::TEXT: {
+                            element->set_stringvalue(std::to_string(INTEGER(v)[i]));
+                        } break;
+                        case plcontainer::PlcDataType::BYTEA: {
+                            element->set_byteavalue(std::to_string(INTEGER(v)[i]));
+                        } break;
+                        default:
+                            this->rLog->log(RServerLogLevel::WARNINGS, "Unsupport type in value %d",
+                                            type);
+                            break;
+                    }
+                } else {
+                    element->set_isnull(true);
+                }
+            }
+        } break;
+        case REALSXP: {
+            for (int i = 0; i < length; i++) {
+                plcontainer::ScalarData *element = result->add_values();
+                if (REAL(v)[i] != NA_REAL) {
+                    switch (type) {
+                        case plcontainer::PlcDataType::LOGICAL: {
+                            element->set_logicalvalue((bool)REAL(v)[i] == 0 ? 0 : 1);
+                        } break;
+                        case plcontainer::PlcDataType::INT: {
+                            element->set_intvalue((int32_t)REAL(v)[i]);
+                        } break;
+                        case plcontainer::PlcDataType::REAL: {
+                            element->set_realvalue(REAL(v)[i]);
+                        } break;
+                        case plcontainer::PlcDataType::TEXT: {
+                            element->set_stringvalue(std::to_string(REAL(v)[i]));
+                        } break;
+                        case plcontainer::PlcDataType::BYTEA: {
+                            element->set_byteavalue(std::to_string(REAL(v)[i]));
+                        } break;
+                        default:
+                            this->rLog->log(RServerLogLevel::WARNINGS, "Unsupport type in value %d",
+                                            type);
+                            break;
+                    }
+                } else {
+                    element->set_isnull(true);
+                }
+            }
+        } break;
+        case STRSXP: {
+            for (int i = 0; i < length; i++) {
+                const char *value = CHAR(STRING_ELT(v, i));
+                plcontainer::ScalarData *element = result->add_values();
+                if (STRING_ELT(v, i) != NA_STRING && value != NULL) {
+                    switch (type) {
+                        case plcontainer::PlcDataType::TEXT: {
+                            element->set_stringvalue(std::string(value));
+                        } break;
+                        case plcontainer::PlcDataType::BYTEA: {
+                            element->set_byteavalue(std::string(value));
+                        } break;
+                        default:
+                            this->rLog->log(RServerLogLevel::WARNINGS, "Unsupport type in value %d",
+                                            type);
+                            break;
+                    }
+                } else {
+                    element->set_isnull(true);
+                }
+            }
+        } break;
+        default:
+            this->rLog->log(RServerLogLevel::WARNINGS, "Unsupport type in value %d", type);
+            break;
+    }
+}
+
+SEXP ConvertToSEXP::allocRVector(const plcontainer::PlcDataType type, int length) {
+    SEXP result;
+
+    switch (type) {
+        case plcontainer::PlcDataType::LOGICAL:
+            PROTECT(result = NEW_LOGICAL(length));
+            break;
+        case plcontainer::PlcDataType::INT:
+            PROTECT(result = NEW_INTEGER(length));
+            break;
+        case plcontainer::PlcDataType::REAL:
+            PROTECT(result = NEW_NUMERIC(length));
+            break;
+        // BYTEA array is considered as string
+        case plcontainer::PlcDataType::BYTEA:
+        case plcontainer::PlcDataType::TEXT:
+            PROTECT(result = NEW_CHARACTER(length));
+            break;
+        default:
+            this->rLog->log(RServerLogLevel::WARNINGS, "Unsupport type in value %d", type);
+            PROTECT(result = R_NilValue);
+            break;
+    }
+    return result;
 }
