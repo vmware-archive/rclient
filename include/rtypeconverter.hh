@@ -17,9 +17,9 @@
 class ConvertToSEXP {
    public:
     ConvertToSEXP(RServerLog *rLog) { this->rLog = rLog; }
-    SEXP boolToSEXP(const bool &v);
-    SEXP intToSEXP(const int32_t &v);
-    SEXP realToSEXP(const double &v);
+    SEXP boolToSEXP(const bool v);
+    SEXP intToSEXP(const int32_t v);
+    SEXP realToSEXP(const double v);
     SEXP textToSEXP(const std::string &v);
     SEXP byteaToSEXP(const std::string &v);
     SEXP compositeToSEXP(const plcontainer::CompositeData &v);
@@ -30,7 +30,7 @@ class ConvertToSEXP {
    private:
     RServerLog *rLog;
     SEXP scalarToSEXP(const plcontainer::ScalarData &v);
-    SEXP allocRVector(const plcontainer::PlcDataType &type, int length);
+    SEXP allocRVector(const plcontainer::PlcDataType type, int length);
 };
 
 class ConvertToProtoBuf {
@@ -40,7 +40,7 @@ class ConvertToProtoBuf {
     void scalarToProtobuf(SEXP v, plcontainer::PlcDataType type, plcontainer::ScalarData *result);
     void compositeToProtoBuf(SEXP v, std::vector<plcontainer::PlcDataType> &subTypes,
                              plcontainer::CompositeData *result);
-    void arrayToProtoBuf(SEXP v, plcontainer::PlcDataType &type, plcontainer::ArrayData *result);
+    void arrayToProtoBuf(SEXP v, plcontainer::PlcDataType type, plcontainer::ArrayData *result);
     void setLogger(RServerLog *log) { this->rLog = log; }
 
    private:

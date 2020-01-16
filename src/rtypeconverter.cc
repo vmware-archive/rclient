@@ -6,19 +6,19 @@
  */
 #include "rtypeconverter.hh"
 
-SEXP ConvertToSEXP::boolToSEXP(const bool &v) {
+SEXP ConvertToSEXP::boolToSEXP(const bool v) {
     SEXP result;
     PROTECT(result = ScalarLogical(v));
     return result;
 }
 
-SEXP ConvertToSEXP::intToSEXP(const int32_t &v) {
+SEXP ConvertToSEXP::intToSEXP(const int32_t v) {
     SEXP result;
     PROTECT(result = ScalarInteger(v));
     return result;
 }
 
-SEXP ConvertToSEXP::realToSEXP(const double &v) {
+SEXP ConvertToSEXP::realToSEXP(const double v) {
     SEXP result;
     PROTECT(result = ScalarReal(v));
     return result;
@@ -369,7 +369,7 @@ SEXP ConvertToSEXP::arrayToSEXP(const plcontainer::ArrayData &v) {
     return result;
 }
 
-void ConvertToProtoBuf::arrayToProtoBuf(SEXP v, plcontainer::PlcDataType &type,
+void ConvertToProtoBuf::arrayToProtoBuf(SEXP v, plcontainer::PlcDataType type,
                                         plcontainer::ArrayData *result) {
     int length = Rf_length(v);
 
@@ -493,7 +493,7 @@ void ConvertToProtoBuf::arrayToProtoBuf(SEXP v, plcontainer::PlcDataType &type,
     }
 }
 
-SEXP ConvertToSEXP::allocRVector(const plcontainer::PlcDataType &type, int length) {
+SEXP ConvertToSEXP::allocRVector(const plcontainer::PlcDataType type, int length) {
     SEXP result;
 
     switch (type) {
