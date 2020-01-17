@@ -36,6 +36,8 @@ SEXP ConvertToSEXP::byteaToSEXP(const std::string &v) {
     int status;
 
     PROTECT(obj = NEW_RAW(v.size()));
+    this->rLog->log(RServerLogLevel::LOGS, "size of string is %d, string is %s", v.size(),
+                    v.data());
     memcpy((char *)RAW(obj), v.data(), v.size());
 
     /*
@@ -50,13 +52,11 @@ SEXP ConvertToSEXP::byteaToSEXP(const std::string &v) {
 
     PROTECT(result = R_tryEval(s, R_GlobalEnv, &status));
 
-    UNPROTECT_PTR(s);
-    UNPROTECT_PTR(t);
-    UNPROTECT_PTR(obj);
-
     if (status != 0) {
         this->rLog->log(RServerLogLevel::WARNINGS, "Could not convert bytea to R object");
     }
+
+    UNPROTECT_PTR(obj);
 
     return result;
 }
