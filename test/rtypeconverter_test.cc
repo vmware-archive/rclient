@@ -1018,3 +1018,39 @@ TEST_F(RConvTest, RConvReturnArrayWithUDTError) {
     EXPECT_EQ(ReturnStatus::OK, core->execute());
     EXPECT_THROW(core->getResults(response), RServerWarningException);
 }
+
+TEST_F(RConvTest, RConvReturnArrayWithOneArgsBYTEA) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    // ArrayData *data;
+    ScalarData *element;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::ARRAY);
+    ret->add_subtypes(PlcDataType::INT);
+
+    src->set_name("test");
+    src->set_src("return (a)");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::BYTEA);
+    element = arg1->mutable_scalarvalue();
+    element->set_type(PlcDataType::BYTEA);
+
+    element->set_byteavalue(
+        "X\n\000\000\000\003\000\003\006\000\000\003\005\000\000\000\000\005UTF-"
+        "8\000\000\002\r\000\000\000\003\000\000\000{"
+        "\000\000\000\001\000\000\000\007\000\000\004\002\000\000\000\001\000\004\000\t\000\000\000"
+        "\003dim\000\000\000\r\000\000\000\001\000\000\000\003\000\000\000\376",
+        79);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(3, response->results()[0].arrayvalue().values_size());
+    EXPECT_EQ(PlcDataType::ARRAY, response->results()[0].type());
+}
