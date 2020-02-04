@@ -24,6 +24,7 @@ class ConvertToSEXP {
     SEXP byteaToSEXP(const std::string &v);
     SEXP compositeToSEXP(const plcontainer::CompositeData &v);
     SEXP arrayToSEXP(const plcontainer::ArrayData &v);
+    SEXP setofToSEXP(const plcontainer::SetOfData &v);
 
     void setLogger(RServerLog *log) { this->rLog = log; }
 
@@ -41,6 +42,9 @@ class ConvertToProtoBuf {
     void compositeToProtoBuf(SEXP v, std::vector<plcontainer::PlcDataType> &subTypes,
                              plcontainer::CompositeData *result);
     void arrayToProtoBuf(SEXP v, plcontainer::PlcDataType type, plcontainer::ArrayData *result);
+    void setofToProtoBuf(SEXP v, std::vector<plcontainer::PlcDataType> &subTypes,
+                         plcontainer::SetOfData *result);
+
     void setLogger(RServerLog *log) { this->rLog = log; }
 
    private:
@@ -50,6 +54,16 @@ class ConvertToProtoBuf {
     double realToProtoBuf(SEXP v);
     std::string textToProtoBuf(SEXP v);
     std::string byteaToProtoBuf(SEXP v);
+    void dataframeToSetof(SEXP frame, std::vector<plcontainer::PlcDataType> &subTypes,
+                          plcontainer::SetOfData *result);
+    void dataframeColumnStoreToRowStore(SEXP column, int32_t rowlength, int columnId,
+                                        plcontainer::SetOfData *result,
+                                        plcontainer::PlcDataType cType);
+    void dataframeColumnStoreToRowStoreFastPath(SEXP column, int32_t rowlength, int columnId,
+                                                plcontainer::SetOfData *result,
+                                                plcontainer::PlcDataType cType);
+    void matrixToSetof(SEXP frame, std::vector<plcontainer::PlcDataType> &subTypes,
+                       plcontainer::SetOfData *result);
 };
 
 #endif  // PLC_RTYPRCONVERTER_H

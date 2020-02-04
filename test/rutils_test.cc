@@ -18,10 +18,10 @@ TEST(RUtilsTest, RLogInit) {
     log = new RServerLog(RServerWorkingMode::CONTAINERDEBUG, std::string("/tmp/rserver_log.log"));
 }
 
-TEST_F(RLogTest, RLogErrorException) {
-    EXPECT_THROW(log->log(RServerLogLevel::ERRORS, "test error"), RServerErrorException);
+TEST_F(RLogTest, RLogFatalException) {
+    EXPECT_THROW(log->log(RServerLogLevel::FATALS, "test error"), RServerFatalException);
 }
 
-TEST_F(RLogTest, RLogWarningException) {
-    EXPECT_THROW(log->log(RServerLogLevel::WARNINGS, "test warning"), RServerWarningException);
+TEST_F(RLogTest, RLogErrorException) {
+    EXPECT_THROW(log->log(RServerLogLevel::ERRORS, "test warning"), RServerErrorException);
 }

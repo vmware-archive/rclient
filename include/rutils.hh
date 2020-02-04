@@ -29,6 +29,7 @@ enum class RServerLogLevel {
     LOGS,
     WARNINGS,
     ERRORS,
+    FATALS,
     UNKNOWN = 99,
 };
 
@@ -39,10 +40,10 @@ enum class RServerWorkingMode {
     UNKNOWN = 99,
 };
 
-class RServerErrorException : public std::exception {
+class RServerFatalException : public std::exception {
    public:
-    RServerErrorException() { this->msg = "R Server Runtime Error "; }
-    RServerErrorException(std::string &msg) { this->msg = "R Server Runtime Error " + msg + " "; }
+    RServerFatalException() { this->msg = "R Server Runtime Error "; }
+    RServerFatalException(std::string &msg) { this->msg = "R Server Runtime Error " + msg + " "; }
 
     virtual const char *what() const noexcept override { return this->msg.c_str(); }
 
@@ -50,14 +51,12 @@ class RServerErrorException : public std::exception {
     std::string msg;
 };
 
-class RServerWarningException : public std::exception {
+class RServerErrorException : public std::exception {
    public:
-    RServerWarningException() {
+    RServerErrorException() {
         this->msg = "R Server Runtime Warning ";
     };
-    RServerWarningException(std::string &msg) {
-        this->msg = "R Server Runtime Warning " + msg + " ";
-    }
+    RServerErrorException(std::string &msg) { this->msg = "R Server Runtime Warning " + msg + " "; }
 
     virtual const char *what() const noexcept override { return this->msg.c_str(); }
 

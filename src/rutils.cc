@@ -36,11 +36,11 @@ void RServerLog::log(RServerLogLevel lvl, const char *format, ...) {
         this->printer->print(log);
     }
     switch (lvl) {
+        case RServerLogLevel::FATALS:
+            throw RServerFatalException(log);
+            break;
         case RServerLogLevel::ERRORS:
             throw RServerErrorException(log);
-            break;
-        case RServerLogLevel::WARNINGS:
-            throw RServerWarningException(log);
             break;
         default:
             break;

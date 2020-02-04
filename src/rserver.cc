@@ -61,25 +61,25 @@ void RServer::udsCheck(const std::string &uds) {
     // Get executor uid: for permission of the unix domain socket file.
 
     if ((env_str = getenv("EXECUTOR_UID")) == NULL)
-        this->rLog->log(RServerLogLevel::ERRORS,
+        this->rLog->log(RServerLogLevel::FATALS,
                         "EXECUTOR_UID is not set, something wrong on QE side");
     errno = 0;
     val = strtol(env_str, &endptr, 10);
     if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN)) || (errno != 0 && val == 0) ||
         endptr == env_str || *endptr != '\0') {
-        this->rLog->log(RServerLogLevel::ERRORS, "EXECUTOR_UID is wrong:'%s'", env_str);
+        this->rLog->log(RServerLogLevel::FATALS, "EXECUTOR_UID is wrong:'%s'", env_str);
     }
     qe_uid = val;
 
     // Get executor gid: for permission of the unix domain socket file.
     if ((env_str = getenv("EXECUTOR_GID")) == NULL)
-        this->rLog->log(RServerLogLevel::ERRORS,
+        this->rLog->log(RServerLogLevel::FATALS,
                         "EXECUTOR_GID is not set, something wrong on QE side");
     errno = 0;
     val = strtol(env_str, &endptr, 10);
     if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN)) || (errno != 0 && val == 0) ||
         endptr == env_str || *endptr != '\0') {
-        this->rLog->log(RServerLogLevel::ERRORS, "EXECUTOR_GID is wrong:'%s'", env_str);
+        this->rLog->log(RServerLogLevel::FATALS, "EXECUTOR_GID is wrong:'%s'", env_str);
     }
     qe_gid = val;
 
@@ -87,12 +87,12 @@ void RServer::udsCheck(const std::string &uds) {
     // code on the QE side could access it and clean up it later.
 
     if (chown(uds.c_str(), qe_uid, qe_gid) < 0)
-        this->rLog->log(RServerLogLevel::ERRORS,
+        this->rLog->log(RServerLogLevel::FATALS,
                         "Could not set ownership for file %s with owner %d, "
                         "group %d: %s",
                         uds.c_str(), qe_uid, qe_gid, strerror(errno));
     if (chmod(uds.c_str(), S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) < 0) /* 0666*/
-        this->rLog->log(RServerLogLevel::ERRORS, "Could not set permission for file %s: %s",
+        this->rLog->log(RServerLogLevel::FATALS, "Could not set permission for file %s: %s",
                         uds.c_str(), strerror(errno));
 }
 
@@ -102,7 +102,7 @@ void RServerRPC::initRCore() {
     ReturnStatus status = this->runtime->init();
 
     if (status != ReturnStatus::OK) {
-        this->rLog->log(RServerLogLevel::ERRORS, "Cannot init R core");
+        this->rLog->log(RServerLogLevel::FATALS, "Cannot init R core");
     }
 
     this->rLog->log(RServerLogLevel::LOGS, "RCore init success");
@@ -119,7 +119,7 @@ Status RServerRPC::FunctionCall(ServerContext *context, const CallRequest *callR
         result->set_logs(this->rLog->getLogBuffer());
         this->rLog->resetLogBuffer();
     }
-    catch (RServerErrorException &e) {
+    catch (RServerFatalException &e) {
         Error *err = result->mutable_exception();
         err->set_message(e.what());
         result->set_logs(this->rLog->getLogBuffer());
@@ -127,7 +127,7 @@ Status RServerRPC::FunctionCall(ServerContext *context, const CallRequest *callR
 
         // TODO: clear up all/cached SEXP content
     }
-    catch (RServerWarningException &e) {
+    catch (RServerErrorException &e) {
         Error *err = result->mutable_exception();
         err->set_message(e.what());
         result->set_logs(this->rLog->getLogBuffer());
