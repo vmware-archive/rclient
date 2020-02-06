@@ -106,7 +106,7 @@ TEST_F(RCallTest, RCoreEXECWithNoArgumentAndReturnHasArgument) {
     src->set_src("return (a)");
 
     EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
-    EXPECT_THROW(core->execute(), RServerWarningException);
+    EXPECT_THROW(core->execute(), RServerErrorException);
 }
 
 TEST_F(RCallTest, RCoreGetResultsWithNoArgumentINT) {

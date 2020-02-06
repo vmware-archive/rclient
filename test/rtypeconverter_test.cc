@@ -500,7 +500,7 @@ TEST_F(RConvTest, RConvResultsUdtWithFiveElementsError) {
 
     EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
     EXPECT_EQ(ReturnStatus::OK, core->execute());
-    EXPECT_THROW(core->getResults(response), RServerWarningException);
+    EXPECT_THROW(core->getResults(response), RServerErrorException);
     EXPECT_EQ(PlcDataType::COMPOSITE, response->results()[0].type());
 }
 
@@ -983,7 +983,7 @@ TEST_F(RConvTest, RConvArgArrayWithUDTError) {
     element = data->add_values();
     element->set_stringvalue("c");
 
-    EXPECT_THROW(core->prepare(request), RServerWarningException);
+    EXPECT_THROW(core->prepare(request), RServerErrorException);
 }
 
 TEST_F(RConvTest, RConvReturnArrayWithUDTError) {
@@ -1016,13 +1016,12 @@ TEST_F(RConvTest, RConvReturnArrayWithUDTError) {
 
     EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
     EXPECT_EQ(ReturnStatus::OK, core->execute());
-    EXPECT_THROW(core->getResults(response), RServerWarningException);
+    EXPECT_THROW(core->getResults(response), RServerErrorException);
 }
 
 TEST_F(RConvTest, RConvReturnArrayWithOneArgsBYTEA) {
     plcontainer::CallRequest *request = new plcontainer::CallRequest();
     plcontainer::CallResponse *response = new plcontainer::CallResponse();
-    // ArrayData *data;
     ScalarData *element;
 
     PlcValue *arg1 = request->add_args();
@@ -1053,4 +1052,833 @@ TEST_F(RConvTest, RConvReturnArrayWithOneArgsBYTEA) {
     EXPECT_NO_THROW(core->cleanup());
     EXPECT_EQ(3, response->results()[0].arrayvalue().values_size());
     EXPECT_EQ(PlcDataType::ARRAY, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvArgSetofOne) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::INT);
+
+    src->set_name("test");
+    src->set_src("return (nrow(a))");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(2, response->results()[0].scalarvalue().intvalue());
+    EXPECT_EQ(PlcDataType::INT, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvArgSetofTwo) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+    PlcValue *arg;
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::INT);
+
+    src->set_name("test");
+    src->set_src("return (nrow(a) + nrow(b))");
+
+    // Set firsr arg
+    arg = request->add_args();
+    arg->set_name("a");
+    arg->set_type(PlcDataType::SETOF);
+
+    data = arg->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // Set second arg
+    arg = request->add_args();
+    arg->set_name("b");
+    arg->set_type(PlcDataType::SETOF);
+
+    data = arg->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(4, response->results()[0].scalarvalue().intvalue());
+    EXPECT_EQ(PlcDataType::INT, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnSetofOneArg) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::INT);
+    ret->add_subtypes(PlcDataType::INT);
+
+    src->set_name("test");
+    src->set_src("return (data.frame('0'=1:2, '1'=1:2))");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(1, response->results()[0].setofvalue().rowvalues(0).values(0).intvalue());
+    EXPECT_EQ(1, response->results()[0].setofvalue().rowvalues(0).values(1).intvalue());
+    EXPECT_EQ(2, response->results()[0].setofvalue().rowvalues(1).values(0).intvalue());
+    EXPECT_EQ(2, response->results()[0].setofvalue().rowvalues(1).values(1).intvalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnSetofFromOneArgINT) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::INT);
+    ret->add_subtypes(PlcDataType::INT);
+
+    src->set_name("test");
+    src->set_src("return (a)");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(1, response->results()[0].setofvalue().rowvalues(0).values(0).intvalue());
+    EXPECT_EQ(2, response->results()[0].setofvalue().rowvalues(0).values(1).intvalue());
+    EXPECT_EQ(1, response->results()[0].setofvalue().rowvalues(1).values(0).intvalue());
+    EXPECT_EQ(2, response->results()[0].setofvalue().rowvalues(1).values(1).intvalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnSetofFromOneArgLOGICAL) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::LOGICAL);
+    ret->add_subtypes(PlcDataType::LOGICAL);
+
+    src->set_name("test");
+    src->set_src("return (a)");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::LOGICAL);
+    data->add_columntypes(PlcDataType::LOGICAL);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_logicalvalue(true);
+    element = row->add_values();
+    element->set_logicalvalue(true);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_logicalvalue(false);
+    element = row->add_values();
+    element->set_logicalvalue(false);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(true, response->results()[0].setofvalue().rowvalues(0).values(0).logicalvalue());
+    EXPECT_EQ(true, response->results()[0].setofvalue().rowvalues(0).values(1).logicalvalue());
+    EXPECT_EQ(false, response->results()[0].setofvalue().rowvalues(1).values(0).logicalvalue());
+    EXPECT_EQ(false, response->results()[0].setofvalue().rowvalues(1).values(1).logicalvalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnSetofFromIntArgToLOGICAL) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::LOGICAL);
+    ret->add_subtypes(PlcDataType::LOGICAL);
+
+    src->set_name("test");
+    src->set_src("return (a)");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(0);
+    element = row->add_values();
+    element->set_intvalue(0);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(true, response->results()[0].setofvalue().rowvalues(0).values(0).logicalvalue());
+    EXPECT_EQ(true, response->results()[0].setofvalue().rowvalues(0).values(1).logicalvalue());
+    EXPECT_EQ(false, response->results()[0].setofvalue().rowvalues(1).values(0).logicalvalue());
+    EXPECT_EQ(false, response->results()[0].setofvalue().rowvalues(1).values(1).logicalvalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnSetofFromIntArgToREAL) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::REAL);
+    ret->add_subtypes(PlcDataType::REAL);
+
+    src->set_name("test");
+    src->set_src("return (a)");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(1, response->results()[0].setofvalue().rowvalues(0).values(0).realvalue());
+    EXPECT_EQ(2, response->results()[0].setofvalue().rowvalues(0).values(1).realvalue());
+    EXPECT_EQ(1, response->results()[0].setofvalue().rowvalues(1).values(0).realvalue());
+    EXPECT_EQ(2, response->results()[0].setofvalue().rowvalues(1).values(1).realvalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnSetofFromIntArgToINT) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::INT);
+    ret->add_subtypes(PlcDataType::INT);
+
+    src->set_name("test");
+    src->set_src("return (a)");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(1, response->results()[0].setofvalue().rowvalues(0).values(0).intvalue());
+    EXPECT_EQ(2, response->results()[0].setofvalue().rowvalues(0).values(1).intvalue());
+    EXPECT_EQ(1, response->results()[0].setofvalue().rowvalues(1).values(0).intvalue());
+    EXPECT_EQ(2, response->results()[0].setofvalue().rowvalues(1).values(1).intvalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnSetofFromIntArgToTEXT) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::TEXT);
+    ret->add_subtypes(PlcDataType::TEXT);
+
+    src->set_name("test");
+    src->set_src("return (a)");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ("1", response->results()[0].setofvalue().rowvalues(0).values(0).stringvalue());
+    EXPECT_EQ("2", response->results()[0].setofvalue().rowvalues(0).values(1).stringvalue());
+    EXPECT_EQ("1", response->results()[0].setofvalue().rowvalues(1).values(0).stringvalue());
+    EXPECT_EQ("2", response->results()[0].setofvalue().rowvalues(1).values(1).stringvalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnSetofFromIntArgToRAW) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::BYTEA);
+    ret->add_subtypes(PlcDataType::BYTEA);
+
+    src->set_name("test");
+    src->set_src("return (a)");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ("1", response->results()[0].setofvalue().rowvalues(0).values(0).byteavalue());
+    EXPECT_EQ("2", response->results()[0].setofvalue().rowvalues(0).values(1).byteavalue());
+    EXPECT_EQ("1", response->results()[0].setofvalue().rowvalues(1).values(0).byteavalue());
+    EXPECT_EQ("2", response->results()[0].setofvalue().rowvalues(1).values(1).byteavalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnSetofFromMartixInt) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::INT);
+    ret->add_subtypes(PlcDataType::INT);
+
+    src->set_name("test");
+    src->set_src("return (matrix(0:3, nrow = 2, ncol = 2))");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(0, response->results()[0].setofvalue().rowvalues(0).values(0).intvalue());
+    EXPECT_EQ(2, response->results()[0].setofvalue().rowvalues(0).values(1).intvalue());
+    EXPECT_EQ(1, response->results()[0].setofvalue().rowvalues(1).values(0).intvalue());
+    EXPECT_EQ(3, response->results()[0].setofvalue().rowvalues(1).values(1).intvalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnSetofFromMartixLogical) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::LOGICAL);
+    ret->add_subtypes(PlcDataType::LOGICAL);
+
+    src->set_name("test");
+    src->set_src("return (matrix(0:3, nrow = 2, ncol = 2))");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(false, response->results()[0].setofvalue().rowvalues(0).values(0).logicalvalue());
+    EXPECT_EQ(true, response->results()[0].setofvalue().rowvalues(0).values(1).logicalvalue());
+    EXPECT_EQ(true, response->results()[0].setofvalue().rowvalues(1).values(0).logicalvalue());
+    EXPECT_EQ(true, response->results()[0].setofvalue().rowvalues(1).values(1).logicalvalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnSetofFromMartixReal) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::REAL);
+    ret->add_subtypes(PlcDataType::REAL);
+
+    src->set_name("test");
+    src->set_src("return (matrix(0:3, nrow = 2, ncol = 2))");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ(0, response->results()[0].setofvalue().rowvalues(0).values(0).realvalue());
+    EXPECT_EQ(2, response->results()[0].setofvalue().rowvalues(0).values(1).realvalue());
+    EXPECT_EQ(1, response->results()[0].setofvalue().rowvalues(1).values(0).realvalue());
+    EXPECT_EQ(3, response->results()[0].setofvalue().rowvalues(1).values(1).realvalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnSetofFromMartixText) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::TEXT);
+    ret->add_subtypes(PlcDataType::TEXT);
+
+    src->set_name("test");
+    src->set_src("return (matrix(0:3, nrow = 2, ncol = 2))");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ("0", response->results()[0].setofvalue().rowvalues(0).values(0).stringvalue());
+    EXPECT_EQ("2", response->results()[0].setofvalue().rowvalues(0).values(1).stringvalue());
+    EXPECT_EQ("1", response->results()[0].setofvalue().rowvalues(1).values(0).stringvalue());
+    EXPECT_EQ("3", response->results()[0].setofvalue().rowvalues(1).values(1).stringvalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvReturnSetofFromMartixRAW) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    SetOfData *data;
+    ScalarData *element;
+    CompositeData *row;
+
+    PlcValue *arg1 = request->add_args();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::BYTEA);
+    ret->add_subtypes(PlcDataType::BYTEA);
+
+    src->set_name("test");
+    src->set_src("return (matrix(0:3, nrow = 2, ncol = 2))");
+    arg1->set_name("a");
+    arg1->set_type(PlcDataType::SETOF);
+
+    data = arg1->mutable_setofvalue();
+    data->add_columnnames();
+    data->set_columnnames(0, "0");
+    data->add_columnnames();
+    data->set_columnnames(1, "1");
+    data->add_columntypes(PlcDataType::INT);
+    data->add_columntypes(PlcDataType::INT);
+
+    // row 1
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    // row 2
+    row = data->add_rowvalues();
+    element = row->add_values();
+    element->set_intvalue(1);
+    element = row->add_values();
+    element->set_intvalue(2);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    EXPECT_EQ("0", response->results()[0].setofvalue().rowvalues(0).values(0).byteavalue());
+    EXPECT_EQ("2", response->results()[0].setofvalue().rowvalues(0).values(1).byteavalue());
+    EXPECT_EQ("1", response->results()[0].setofvalue().rowvalues(1).values(0).byteavalue());
+    EXPECT_EQ("3", response->results()[0].setofvalue().rowvalues(1).values(1).byteavalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
 }

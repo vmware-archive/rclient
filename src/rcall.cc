@@ -106,7 +106,7 @@ what to do and will hang in the container
 
     if (!Rf_initEmbeddedR(rargc, (char **)rargv)) {
         // TODO: return an error
-        this->rLog->log(RServerLogLevel::ERRORS, "can not start Embedded R");
+        this->rLog->log(RServerLogLevel::FATALS, "can not start Embedded R");
     }
 
     /*
@@ -141,7 +141,8 @@ ReturnStatus RCoreRuntime::prepare(const CallRequest *callRequest) {
     this->returnType = callRequest->rettype().type();
 
     if (callRequest->rettype().type() == PlcDataType::COMPOSITE ||
-        callRequest->rettype().type() == PlcDataType::ARRAY) {
+        callRequest->rettype().type() == PlcDataType::ARRAY ||
+        callRequest->rettype().type() == PlcDataType::SETOF) {
         // We also need to copy subtypes of UDT/Array as this stage
         for (int i = 0; i < callRequest->rettype().subtypes_size(); i++) {
             this->returnSubType.emplace_back(callRequest->rettype().subtypes(i));
@@ -165,7 +166,7 @@ ReturnStatus RCoreRuntime::execute() {
     UNPROTECT_PTR(this->rArgument);
 
     if (errorOccurred) {
-        this->rLog->log(RServerLogLevel::WARNINGS, "Unable execute user code");
+        this->rLog->log(RServerLogLevel::ERRORS, "Unable execute user code");
     }
 
     return ReturnStatus::OK;
@@ -234,10 +235,13 @@ ReturnStatus RCoreRuntime::getResults(CallResponse *results) {
             // Currently, we only support 1-D array, so use index=0
             convert->arrayToProtoBuf(this->rResults, this->returnSubType[0], adata);
         } break;
+        case PlcDataType::SETOF: {
+            SetOfData *sdata = ret->mutable_setofvalue();
+            convert->setofToProtoBuf(this->rResults, this->returnSubType, sdata);
+        } break;
         default:
             delete convert;
-            this->rLog->log(RServerLogLevel::WARNINGS, "Unsupport return type %d",
-                            this->returnType);
+            this->rLog->log(RServerLogLevel::ERRORS, "Unsupport return type %d", this->returnType);
             break;
     }
 
@@ -260,7 +264,7 @@ std::string RCoreRuntime::getLoadSelfRefCmd() {
     /* next load the plr library into R */
     size = readlink("/proc/self/exe", path, PATH_MAX);
     if (size == -1) {
-        this->rLog->log(RServerLogLevel::ERRORS, "can not read execute path");
+        this->rLog->log(RServerLogLevel::FATALS, "can not read execute path");
     } else {
         path[size] = '\0';
     }
@@ -270,7 +274,7 @@ std::string RCoreRuntime::getLoadSelfRefCmd() {
     if (p) {
         *(p + 1) = '\0';
     } else {
-        this->rLog->log(RServerLogLevel::ERRORS, "can not read execute directory %s", path);
+        this->rLog->log(RServerLogLevel::FATALS, "can not read execute directory %s", path);
     }
 
     this->rLog->log(RServerLogLevel::LOGS, "Split path by '/'. Get the path: %s", path);
@@ -291,14 +295,14 @@ void RCoreRuntime::loadRCmd(const std::string &cmd) {
         SET_STRING_ELT(cmdSexp, 0, COPY_TO_USER_STRING(cmd.c_str()));
         PROTECT(cmdexpr = R_PARSEVECTOR(cmdSexp, -1, &status));
         if (status != PARSE_OK) {
-            this->rLog->log(RServerLogLevel::ERRORS, "Cannot process R cmd %s", cmd.c_str());
+            this->rLog->log(RServerLogLevel::FATALS, "Cannot process R cmd %s", cmd.c_str());
         }
 
         /* Loop is needed here as EXPSEXP may be of length > 1 */
         for (i = 0; i < Rf_length(cmdexpr); i++) {
             R_tryEval(VECTOR_ELT(cmdexpr, i), R_GlobalEnv, &status);
             if (status != 0) {
-                this->rLog->log(RServerLogLevel::ERRORS, "Cannot process R cmd %s", cmd.c_str());
+                this->rLog->log(RServerLogLevel::FATALS, "Cannot process R cmd %s", cmd.c_str());
             }
         }
 
@@ -409,10 +413,14 @@ ReturnStatus RCoreRuntime::setArgumentValues(const CallRequest *callRequest) {
                 rArg = convert->arrayToSEXP(callRequest->args()[count].arrayvalue());
                 break;
             }
+            case PlcDataType::SETOF: {
+                rArg = convert->setofToSEXP(callRequest->args()[count].setofvalue());
+                break;
+            }
             default:
                 UNPROTECT(count + 1);
                 delete convert;
-                this->rLog->log(RServerLogLevel::WARNINGS, "Unsupport type in args %s",
+                this->rLog->log(RServerLogLevel::ERRORS, "Unsupport type in args %s",
                                 callRequest->args()[count].name().c_str());
                 return ReturnStatus::FAIL;
         }
