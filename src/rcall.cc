@@ -252,6 +252,8 @@ ReturnStatus RCoreRuntime::getResults(CallResponse *results) {
 void RCoreRuntime::cleanup() {
     UNPROTECT_PTR(this->rResults);
     UNPROTECT_PTR(this->rCode);
+    // also clear the subtype vector
+    this->returnSubType.clear();
 }
 
 std::string RCoreRuntime::getLoadSelfRefCmd() {
