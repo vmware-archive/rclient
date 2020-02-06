@@ -124,6 +124,9 @@ what to do and will hang in the container
 
     R_CStackLimit = (uintptr_t) - 1; /* disables R stack checking entirely */
 
+    // reset the vaule of counter
+    this->counter = 0;
+
     return ReturnStatus::OK;
 }
 
@@ -254,6 +257,10 @@ void RCoreRuntime::cleanup() {
     UNPROTECT_PTR(this->rCode);
     // also clear the subtype vector
     this->returnSubType.clear();
+
+    // increase the counter
+    this->counter++;
+    this->rLog->log(RServerLogLevel::LOGS, "finish the %d calls", this->counter);
 }
 
 std::string RCoreRuntime::getLoadSelfRefCmd() {

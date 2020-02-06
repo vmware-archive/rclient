@@ -476,7 +476,9 @@ void ConvertToProtoBuf::arrayToProtoBuf(SEXP v, plcontainer::PlcDataType type,
                             element->set_byteavalue(std::string(value));
                         } break;
                         default:
-                            this->rLog->log(RServerLogLevel::ERRORS, "Unsupport type in value %d",
+                            this->rLog->log(RServerLogLevel::ERRORS,
+                                            "Unsupport type in value %d, only TEXT/BYTEA return "
+                                            "types are supported",
                                             type);
                             break;
                     }
@@ -486,7 +488,9 @@ void ConvertToProtoBuf::arrayToProtoBuf(SEXP v, plcontainer::PlcDataType type,
             }
         } break;
         default:
-            this->rLog->log(RServerLogLevel::ERRORS, "Unsupport type in value %d", type);
+            this->rLog->log(
+                RServerLogLevel::ERRORS,
+                "Unsupport type in value %d when converting R object to GPDB array type", type);
             break;
     }
 }

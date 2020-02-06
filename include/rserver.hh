@@ -1,6 +1,8 @@
 #ifndef _R_SERVER_H
 #define _R_SERVER_H
 
+#include <mutex>
+
 #include <grpc/grpc.h>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>

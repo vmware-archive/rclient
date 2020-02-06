@@ -11,6 +11,7 @@
 #include <string>
 #include <exception>
 #include <vector>
+#include <mutex>
 
 #include "rutils.hh"
 
@@ -120,6 +121,7 @@ class RCoreRuntime : public PlcRuntime {
     PlcDataType returnType;
     std::vector<PlcDataType> returnSubType;
     RServerLog *rLog;
+    int32_t counter;
     // TODO: add cache for further requests
 
     void loadRCmd(const std::string &cmd);
