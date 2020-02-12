@@ -126,3 +126,20 @@ TEST_F(RCallTest, RCoreGetResultsWithNoArgumentINT) {
     EXPECT_EQ(1, response->results()[0].scalarvalue().intvalue());
     EXPECT_EQ(PlcDataType::INT, response->results()[0].type());
 }
+
+TEST_F(RCallTest, RCoreGetResultsWithVoidReturnType) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    src->set_name("test");
+    src->set_src("return (1)");
+    ret->set_type(PlcDataType::VOID);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_EQ(PlcDataType::VOID, response->results()[0].type());
+}

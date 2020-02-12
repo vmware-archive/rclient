@@ -242,6 +242,9 @@ ReturnStatus RCoreRuntime::getResults(CallResponse *results) {
             SetOfData *sdata = ret->mutable_setofvalue();
             convert->setofToProtoBuf(this->rResults, this->returnSubType, sdata);
         } break;
+        case PlcDataType::VOID: {
+            // No return needed
+        } break;
         default:
             delete convert;
             this->rLog->log(RServerLogLevel::ERRORS, "Unsupport return type %d", this->returnType);
