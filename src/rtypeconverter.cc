@@ -729,7 +729,7 @@ void ConvertToProtoBuf::dataframeColumnStoreToRowStoreFastPath(SEXP column, int3
                     result->mutable_rowvalues(i)->mutable_values(columnId)->set_isnull(true);
                 }
             }
-        }
+        } break;
         case plcontainer::PlcDataType::REAL: {
             if (IS_INTEGER(column)) {
                 for (int32_t i = 0; i < rowlength; i++) {
@@ -750,7 +750,7 @@ void ConvertToProtoBuf::dataframeColumnStoreToRowStoreFastPath(SEXP column, int3
                     }
                 }
             }
-        }
+        } break;
         default:
             break;
     }
