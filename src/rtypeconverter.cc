@@ -624,6 +624,10 @@ void ConvertToProtoBuf::dataframeToSetof(SEXP frame,
                                          plcontainer::SetOfData *result) {
     int32_t rowlength;
 
+    if (Rf_isNull(frame)) {
+        return;
+    }
+
     if (Rf_length(frame) != (int)subTypes.size()) {
         this->rLog->log(RServerLogLevel::ERRORS,
                         "The number of column in data.frame (%d) does not match the number of "
@@ -889,6 +893,10 @@ void ConvertToProtoBuf::matrixToSetof(SEXP mx, std::vector<plcontainer::PlcDataT
 
     int columnLength = subTypes.size();
     int rowLength;
+
+    if (Rf_isNull(mx)) {
+        return;
+    }
 
     if (isMatrix(mx)) {
         // get the n*m details from matrix

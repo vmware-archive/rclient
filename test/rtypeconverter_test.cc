@@ -2208,3 +2208,114 @@ TEST_F(RConvTest, RConvArgArrayWithOneArgsRegressFive) {
     // EXPECT_EQ("a b c", response->results()[0].scalarvalue().stringvalue());
     EXPECT_EQ(PlcDataType::ARRAY, response1->results()[0].type());
 }
+
+TEST_F(RConvTest, RConvArgArrayWithOneArgsRegressSIX) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+    ArrayData *data;
+    ScalarData *element;
+    PlcValue *arg;
+    ProcSrc *src;
+    ReturnType *ret;
+
+    src = request->mutable_proc();
+    ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::SETOF);
+    ret->add_subtypes(PlcDataType::TEXT);
+    ret->add_subtypes(PlcDataType::REAL);
+
+    src->set_name("test");
+    src->set_src(
+        "df <- data.frame(\n    date=date\n   ,returns=returns\n   "
+        ",market_cap=market_cap\n   ,total_market_cap=total_market_cap\n   "
+        ",benchmark_weight=benchmark_weight\n   ,benchmark_return=benchmark_return\n)\n  "
+		"return(as.null(df))\n");
+
+    arg = request->add_args();
+
+    arg->set_name("date");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::TEXT);
+
+    element = data->add_values();
+    element->set_stringvalue("1984-01-04");
+    element = data->add_values();
+    element->set_stringvalue("1984-01-04");
+
+    arg = request->add_args();
+
+    arg->set_name("returns");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::REAL);
+
+    element = data->add_values();
+    element->set_realvalue(1);
+    element = data->add_values();
+    element->set_realvalue(1);
+
+    arg = request->add_args();
+
+    arg->set_name("market_cap");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::REAL);
+
+    element = data->add_values();
+    element->set_realvalue(1);
+    element = data->add_values();
+    element->set_realvalue(1);
+
+    arg = request->add_args();
+
+    arg->set_name("total_market_cap");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::REAL);
+
+    element = data->add_values();
+    element->set_realvalue(1);
+    element = data->add_values();
+    element->set_realvalue(1);
+
+    arg = request->add_args();
+
+    arg->set_name("benchmark_weight");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::REAL);
+
+    element = data->add_values();
+    element->set_realvalue(1);
+    element = data->add_values();
+    element->set_realvalue(1);
+
+    arg = request->add_args();
+
+    arg->set_name("benchmark_return");
+    arg->set_type(PlcDataType::ARRAY);
+    data = arg->mutable_arrayvalue();
+    data->set_elementtype(PlcDataType::REAL);
+
+    element = data->add_values();
+    element->set_realvalue(1);
+    element = data->add_values();
+    element->set_realvalue(1);
+
+    arg = request->add_args();
+
+    arg->set_name("rollingwindowsize");
+    arg->set_type(PlcDataType::INT);
+    element = arg->mutable_scalarvalue();
+
+    element->set_intvalue(100);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    // EXPECT_EQ("a b c", response->results()[0].scalarvalue().stringvalue());
+    EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
