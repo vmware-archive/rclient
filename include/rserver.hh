@@ -4,6 +4,7 @@
 #include <mutex>
 
 #include <grpc/grpc.h>
+#include <grpc/status.h>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 #include <grpcpp/server_context.h>
@@ -46,6 +47,7 @@ class RServerRPC final : public PLContainer::Service {
    private:
     PlcRuntime *runtime;
     RServerLog *rLog;
+    std::mutex mtx;
 };
 
 class RServer {
