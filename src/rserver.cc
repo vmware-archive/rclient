@@ -110,29 +110,53 @@ void RServerRPC::initRCore() {
 
 Status RServerRPC::FunctionCall(ServerContext *context, const CallRequest *callRequest,
                                 CallResponse *result) {
-    (void)context;
     try {
+        if (!this->mtx.try_lock()) {
+            this->rLog->log(RServerLogLevel::ERRORS,
+                            "The previous query is still running, cannot accpet new query. Maybe "
+                            "client is timeout");
+        }
         this->rLog->log(RServerLogLevel::LOGS, "start to process query");
         this->runtime->prepare(callRequest);
         this->runtime->execute();
+
+        // If cancelled, we do not need to process the results
+        if (context->IsCancelled()) {
+            this->rLog->log(RServerLogLevel::WARNINGS, "this query has been cancelled by client");
+            this->mtx.unlock();
+            return Status::CANCELLED;
+        }
+
         this->runtime->getResults(result);
         this->runtime->cleanup();
         result->set_logs(this->rLog->getLogBuffer());
         this->rLog->resetLogBuffer();
+        this->mtx.unlock();
     }
     catch (RServerFatalException &e) {
         Error *err = result->mutable_exception();
+        Status fatalStatus = Status(grpc::StatusCode::INTERNAL, grpc::string(e.what()));
         err->set_message(e.what());
         result->set_logs(this->rLog->getLogBuffer());
         this->rLog->resetLogBuffer();
+        this->mtx.unlock();
+
+        return fatalStatus;
 
         // TODO: clear up all/cached SEXP content
     }
     catch (RServerErrorException &e) {
         Error *err = result->mutable_exception();
+        Status errorStatus = Status(grpc::StatusCode::FAILED_PRECONDITION, grpc::string(e.what()));
         err->set_message(e.what());
         result->set_logs(this->rLog->getLogBuffer());
         this->rLog->resetLogBuffer();
+
+        // Test whether mutex is locked or not
+        this->mtx.try_lock();
+        this->mtx.unlock();
+
+        return errorStatus;
     }
     return Status::OK;
 }

@@ -2230,7 +2230,7 @@ TEST_F(RConvTest, RConvArgArrayWithOneArgsRegressSIX) {
         "df <- data.frame(\n    date=date\n   ,returns=returns\n   "
         ",market_cap=market_cap\n   ,total_market_cap=total_market_cap\n   "
         ",benchmark_weight=benchmark_weight\n   ,benchmark_return=benchmark_return\n)\n  "
-		"return(as.null(df))\n");
+        "return(as.null(df))\n");
 
     arg = request->add_args();
 
@@ -2318,4 +2318,30 @@ TEST_F(RConvTest, RConvArgArrayWithOneArgsRegressSIX) {
     EXPECT_NO_THROW(core->cleanup());
     // EXPECT_EQ("a b c", response->results()[0].scalarvalue().stringvalue());
     EXPECT_EQ(PlcDataType::SETOF, response->results()[0].type());
+}
+
+TEST_F(RConvTest, RConvArgINTRegressSEVEN) {
+    plcontainer::CallRequest *request = new plcontainer::CallRequest();
+    plcontainer::CallResponse *response = new plcontainer::CallResponse();
+
+    PlcValue *arg = request->add_args();
+    ScalarData *data;
+    ProcSrc *src = request->mutable_proc();
+    ReturnType *ret = request->mutable_rettype();
+
+    ret->set_type(PlcDataType::INT);
+
+    src->set_name("test");
+    src->set_src("a <- 0\n for (i in 1:n){\n a <- a + 1\n}\n return (as.integer(a))\n");
+    arg->set_name("n");
+    arg->set_type(PlcDataType::INT);
+    data = arg->mutable_scalarvalue();
+    data->set_intvalue(10000000);
+
+    EXPECT_EQ(ReturnStatus::OK, core->prepare(request));
+    EXPECT_EQ(ReturnStatus::OK, core->execute());
+    EXPECT_EQ(ReturnStatus::OK, core->getResults(response));
+    EXPECT_NO_THROW(core->cleanup());
+    // EXPECT_EQ(100, response->results()[0].scalarvalue().intvalue());
+    EXPECT_EQ(PlcDataType::INT, response->results()[0].type());
 }
