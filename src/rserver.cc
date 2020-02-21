@@ -123,6 +123,7 @@ Status RServerRPC::FunctionCall(ServerContext *context, const CallRequest *callR
         // If cancelled, we do not need to process the results
         if (context->IsCancelled()) {
             this->rLog->log(RServerLogLevel::WARNINGS, "this query has been cancelled by client");
+            this->mtx.unlock();
             return Status::CANCELLED;
         }
 
@@ -138,6 +139,8 @@ Status RServerRPC::FunctionCall(ServerContext *context, const CallRequest *callR
         err->set_message(e.what());
         result->set_logs(this->rLog->getLogBuffer());
         this->rLog->resetLogBuffer();
+        this->mtx.unlock();
+
         return fatalStatus;
 
         // TODO: clear up all/cached SEXP content
@@ -148,6 +151,10 @@ Status RServerRPC::FunctionCall(ServerContext *context, const CallRequest *callR
         err->set_message(e.what());
         result->set_logs(this->rLog->getLogBuffer());
         this->rLog->resetLogBuffer();
+
+        // Test whether mutex is locked or not
+        this->mtx.try_lock();
+        this->mtx.unlock();
 
         return errorStatus;
     }
