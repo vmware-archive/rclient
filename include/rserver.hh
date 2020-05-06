@@ -31,9 +31,10 @@ using grpc::Status;
 #define IPC_CLIENT_DIR "/tmp/plcontainer"
 class RServerRPC final : public PLContainer::Service {
    public:
-    RServerRPC(RServerLog *rLog) {
+    RServerRPC(RServerWorkingMode mode, RServerLog *rLog) {
         this->runtime = nullptr;
         this->rLog = rLog;
+        this->serverWorkingMode = mode;
     }
 
     virtual void initRCore();
@@ -42,22 +43,32 @@ class RServerRPC final : public PLContainer::Service {
     virtual Status FunctionCall(ServerContext *context, const CallRequest *callRequest,
                                 CallResponse *result) override;
 
-    virtual ~RServerRPC() { delete this->runtime; }
+    virtual ~RServerRPC() {
+        if (this->runtime != nullptr) {
+            delete this->runtime;
+        }
+    }
 
    private:
+    Status singleSessionRuntime(ServerContext *context, const CallRequest *callRequest,
+                                CallResponse *result);
+    Status multiSessionRuntime(ServerContext *context, const CallRequest *callRequest,
+                               CallResponse *result);
     PlcRuntime *runtime;
     RServerLog *rLog;
     std::mutex mtx;
+    RServerWorkingMode serverWorkingMode;
 };
 
 class RServer {
    public:
-    RServer(bool standAloneMode, RServerLog *rLog) {
-        this->standAloneMode = standAloneMode;
+    RServer(RServerWorkingMode mode, RServerLog *rLog) {
+        this->serverWorkingMode = mode;
         this->rLog = rLog;
-        server = new RServerRPC(rLog);
+        server = new RServerRPC(mode, rLog);
     }
 
+    virtual int initServer(const std::string &address, const std::string &port);
     virtual int initServer(const std::string &udsFile);
     virtual int initServer();
 
@@ -70,8 +81,8 @@ class RServer {
     };
 
    private:
-    bool standAloneMode;
-    std::string udsAddress;
+    RServerWorkingMode serverWorkingMode;
+    std::string serverAddress;
     RServerRPC *server;
     RServerLog *rLog;
 

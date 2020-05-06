@@ -4,6 +4,6 @@
 TEST(RServerTest, RServerInit) {
     RServerLog *log = nullptr;
     log = new RServerLog(RServerWorkingMode::STANDALONG, std::string(""));
-    RServer *server = new RServer(true, log);
+    RServer *server = new RServer(RServerWorkingMode::STANDALONG, log);
     (void)server;
 }

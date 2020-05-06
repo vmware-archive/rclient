@@ -19,11 +19,12 @@
 int RServer::startServer() {
     ServerBuilder builder;
 
-    builder.AddListeningPort(this->udsAddress, grpc::InsecureServerCredentials());
+    builder.AddListeningPort(this->serverAddress, grpc::InsecureServerCredentials());
     builder.RegisterService(this->server);
     std::unique_ptr<Server> server(builder.BuildAndStart());
 
-    if (this->standAloneMode == false) {
+    if (this->serverWorkingMode == RServerWorkingMode::CONTAINER ||
+        this->serverWorkingMode == RServerWorkingMode::CONTAINERDEBUG) {
         this->rLog->log(RServerLogLevel::LOGS, "Container mode, check uds permission");
         this->udsCheck(UDS_SHARED_FILE);
     }
@@ -34,15 +35,21 @@ int RServer::startServer() {
     return 0;
 }
 
+int RServer::initServer(const std::string &address, const std::string &port) {
+    this->serverAddress = address + ":" + port;
+    this->server->initRCore();
+    return 0;
+}
+
 int RServer::initServer(const std::string &udsFile) {
-    this->udsAddress = "unix://" + udsFile;
+    this->serverAddress = "unix://" + udsFile;
     this->server->initRCore();
 
     return 0;
 }
 
 int RServer::initServer() {
-    this->udsAddress = UDS_SHARED_ADDRESS;
+    this->serverAddress = UDS_SHARED_ADDRESS;
     this->server->initRCore();
 
     return 0;
@@ -108,8 +115,8 @@ void RServerRPC::initRCore() {
     this->rLog->log(RServerLogLevel::LOGS, "RCore init success");
 }
 
-Status RServerRPC::FunctionCall(ServerContext *context, const CallRequest *callRequest,
-                                CallResponse *result) {
+Status RServerRPC::singleSessionRuntime(ServerContext *context, const CallRequest *callRequest,
+                                        CallResponse *result) {
     try {
         if (!this->mtx.try_lock()) {
             this->rLog->log(RServerLogLevel::ERRORS,
@@ -123,6 +130,7 @@ Status RServerRPC::FunctionCall(ServerContext *context, const CallRequest *callR
         // If cancelled, we do not need to process the results
         if (context->IsCancelled()) {
             this->rLog->log(RServerLogLevel::WARNINGS, "this query has been cancelled by client");
+            this->runtime->cleanup();
             this->mtx.unlock();
             return Status::CANCELLED;
         }
@@ -151,12 +159,81 @@ Status RServerRPC::FunctionCall(ServerContext *context, const CallRequest *callR
         err->set_message(e.what());
         result->set_logs(this->rLog->getLogBuffer());
         this->rLog->resetLogBuffer();
-
-        // Test whether mutex is locked or not
-        this->mtx.try_lock();
         this->mtx.unlock();
 
         return errorStatus;
     }
     return Status::OK;
+}
+
+Status RServerRPC::multiSessionRuntime(ServerContext *context, const CallRequest *callRequest,
+                                       CallResponse *result) {
+    RServerLog *log = new RServerLog(this->serverWorkingMode, std::string(""));
+    RCoreRuntime *runtime = new RCoreRuntime(log);
+
+    try {
+        log->log(RServerLogLevel::LOGS, "start to a new session");
+        runtime->prepare(callRequest);
+        log->log(RServerLogLevel::LOGS, "start to process query");
+
+        runtime->execute();
+
+        // If cancelled, we do not need to process the results
+        if (context->IsCancelled()) {
+            log->log(RServerLogLevel::WARNINGS, "this query has been cancelled by client");
+            runtime->cleanup();
+            return Status::CANCELLED;
+        }
+
+        runtime->getResults(result);
+        runtime->cleanup();
+        result->set_logs(log->getLogBuffer());
+        log->resetLogBuffer();
+    }
+    catch (RServerFatalException &e) {
+        Error *err = result->mutable_exception();
+        Status fatalStatus = Status(grpc::StatusCode::INTERNAL, grpc::string(e.what()));
+        err->set_message(e.what());
+        result->set_logs(log->getLogBuffer());
+        log->resetLogBuffer();
+        runtime->cleanup();
+
+        delete runtime;
+        delete log;
+
+        return fatalStatus;
+
+        // TODO: clear up all/cached SEXP content
+    }
+    catch (RServerErrorException &e) {
+        Error *err = result->mutable_exception();
+        Status errorStatus = Status(grpc::StatusCode::FAILED_PRECONDITION, grpc::string(e.what()));
+        err->set_message(e.what());
+        result->set_logs(this->rLog->getLogBuffer());
+        log->resetLogBuffer();
+        runtime->cleanup();
+
+        delete runtime;
+        delete log;
+
+        return errorStatus;
+    }
+
+    // clean the R runtime session
+    delete runtime;
+    delete log;
+
+    return Status::OK;
+}
+
+Status RServerRPC::FunctionCall(ServerContext *context, const CallRequest *callRequest,
+                                CallResponse *result) {
+    switch (this->serverWorkingMode) {
+        // Currently only PL4K related mode need multiple session support
+        case RServerWorkingMode::PL4K:
+        case RServerWorkingMode::PL4KDEBUG:
+            return this->multiSessionRuntime(context, callRequest, result);
+        default:
+            return this->singleSessionRuntime(context, callRequest, result);
+    }
 }

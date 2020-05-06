@@ -6,9 +6,11 @@ RServerLog::RServerLog(RServerWorkingMode mode, std::string filename) {
 
     switch (mode) {
         case RServerWorkingMode::STANDALONG:
+        case RServerWorkingMode::PL4KDEBUG:
             this->printer = new StdLogPrinter();
             break;
-        case RServerWorkingMode::CONTAINER: {
+        case RServerWorkingMode::CONTAINER:
+        case RServerWorkingMode::PL4K: {
             this->localBuffer.reserve(MAX_SERVER_LOG_BUFFER_SIZE + 5);
             this->printer = new BufferLogPrinter(&this->localBuffer);
         } break;
