@@ -16,6 +16,10 @@ TEST(RUtilsTest, RLogInit) {
     log = new RServerLog(RServerWorkingMode::CONTAINER, std::string(""));
     delete log;
     log = new RServerLog(RServerWorkingMode::CONTAINERDEBUG, std::string("/tmp/rserver_log.log"));
+    delete log;
+    log = new RServerLog(RServerWorkingMode::PL4K, std::string(""));
+    delete log;
+    log = new RServerLog(RServerWorkingMode::PL4KDEBUG, std::string("/"));
 }
 
 TEST_F(RLogTest, RLogFatalException) {

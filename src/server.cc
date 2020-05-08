@@ -46,7 +46,8 @@ int main(int argc, char **argv) {
                          argv[2]);
                 server->initServer();
             } else if (mode.compare("4") == 0) {
-                log = new RServerLog(RServerWorkingMode::PL4K, std::string(""));
+                // Server log will go to stdout, and query log will go to buffer
+                log = new RServerLog(RServerWorkingMode::PL4KDEBUG, std::string(""));
                 server = new RServer(RServerWorkingMode::PL4K, log);
                 log->log(RServerLogLevel::LOGS,
                          "Server start in PL4K mode, listening address is %s, port is %s", argv[2],
