@@ -37,6 +37,8 @@ enum class RServerWorkingMode {
     STANDALONG = 1,
     CONTAINER = 2,
     CONTAINERDEBUG = 3,
+    PL4K = 4,
+    PL4KDEBUG = 5,
     UNKNOWN = 99,
 };
 

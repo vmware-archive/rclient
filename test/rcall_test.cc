@@ -21,7 +21,7 @@ class RCallTest : public testing::Test {
     RServerLog *logs;
 };
 
-TEST_F(RCallTest, RCoreInit) { EXPECT_EQ(ReturnStatus::OK, core->init()); }
+// TEST_F(RCallTest, RCoreInit) { EXPECT_EQ(ReturnStatus::OK, core->init()); }
 
 TEST_F(RCallTest, RCorePrePareNoArgument) {
     plcontainer::CallRequest *request = new plcontainer::CallRequest();

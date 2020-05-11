@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
     try {
         if (argc <= 2) {
             log = new RServerLog(RServerWorkingMode::CONTAINER, std::string(""));
-            server = new RServer(false, log);
+            server = new RServer(RServerWorkingMode::CONTAINER, log);
             server->initServer();
         } else {
 
@@ -30,24 +30,39 @@ int main(int argc, char **argv) {
 
             if (mode.compare("1") == 0) {
                 log = new RServerLog(RServerWorkingMode::STANDALONG, std::string(""));
-                server = new RServer(true, log);
+                server = new RServer(RServerWorkingMode::STANDALONG, log);
                 log->log(RServerLogLevel::LOGS, "Server start in stand alone mode in %s", argv[1]);
                 server->initServer(std::string(argv[2]));
             } else if (mode.compare("2") == 0) {
                 log = new RServerLog(RServerWorkingMode::CONTAINER, std::string(""));
-                server = new RServer(false, log);
+                server = new RServer(RServerWorkingMode::CONTAINER, log);
                 log->log(RServerLogLevel::LOGS, "Server start in container mode in %s", argv[1]);
                 server->initServer();
             } else if (mode.compare("3") == 0) {
                 log = new RServerLog(RServerWorkingMode::CONTAINERDEBUG, std::string(argv[2]));
-                server = new RServer(false, log);
+                server = new RServer(RServerWorkingMode::CONTAINERDEBUG, log);
                 log->log(RServerLogLevel::LOGS,
                          "Server start in container debug mode in %s, output file is %s", argv[1],
                          argv[2]);
                 server->initServer();
+            } else if (mode.compare("4") == 0) {
+                // Server log will go to stdout, and query log will go to buffer
+                log = new RServerLog(RServerWorkingMode::PL4KDEBUG, std::string(""));
+                server = new RServer(RServerWorkingMode::PL4K, log);
+                log->log(RServerLogLevel::LOGS,
+                         "Server start in PL4K mode, listening address is %s, port is %s", argv[2],
+                         argv[3]);
+                server->initServer(argv[2], argv[3]);
+            } else if (mode.compare("5") == 0) {
+                log = new RServerLog(RServerWorkingMode::PL4KDEBUG, std::string(""));
+                server = new RServer(RServerWorkingMode::PL4KDEBUG, log);
+                log->log(RServerLogLevel::LOGS,
+                         "Server start in PL4K debuging mode, listening address is %s, port is %s",
+                         argv[2], argv[3]);
+                server->initServer(argv[2], argv[3]);
             } else {
                 log = new RServerLog(RServerWorkingMode::CONTAINER, std::string(""));
-                server = new RServer(false, log);
+                server = new RServer(RServerWorkingMode::CONTAINER, log);
                 log->log(RServerLogLevel::LOGS,
                          "Server start in unknown mode in %s, using default mode", argv[1]);
                 server->initServer();
