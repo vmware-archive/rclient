@@ -13,6 +13,7 @@ class RConvTest : public testing::Test {
     virtual void SetUp() {
         logs = new RServerLog(RServerWorkingMode::STANDALONG, std::string(""));
         core = new RCoreRuntime(logs);
+        core->initRProtectList();
     }
     virtual void TearDown() {
         delete core;

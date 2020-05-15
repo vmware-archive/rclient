@@ -890,7 +890,6 @@ void ConvertToProtoBuf::dataframeColumnStoreToRowStore(SEXP column, int32_t rowl
 
 void ConvertToProtoBuf::matrixToSetof(SEXP mx, std::vector<plcontainer::PlcDataType> &subTypes,
                                       plcontainer::SetOfData *result) {
-
     int columnLength = subTypes.size();
     int rowLength;
 

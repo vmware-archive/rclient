@@ -7,16 +7,16 @@
 #ifndef PLC_RCALL_H
 #define PLC_RCALL_H
 
-#include <iostream>
-#include <string>
 #include <exception>
-#include <vector>
+#include <iostream>
 #include <mutex>
+#include <string>
+#include <vector>
 
 #include "rutils.hh"
 
-#include "plcontainer.pb.h"
 #include "plcontainer.grpc.pb.h"
+#include "plcontainer.pb.h"
 
 #include "rtypeconverter.hh"
 
@@ -110,18 +110,21 @@ class RCoreRuntime : public PlcRuntime {
 
     void setLogger(RServerLog *log) { this->rLog = log; }
 
-    virtual ~RCoreRuntime() {};
+    void initRProtectList();
+    void releaseRProtectList();
+
+    virtual ~RCoreRuntime(){};
 
    protected:
     SEXP rCode;
     SEXP rArgument;
     SEXP rFunc;
     SEXP rResults;
+    SEXP rProtectList;
     PlcRuntimeType runType;
     PlcDataType returnType;
     std::vector<PlcDataType> returnSubType;
     RServerLog *rLog;
-    int32_t counter;
     // TODO: add cache for further requests
 
     void loadRCmd(const std::string &cmd);

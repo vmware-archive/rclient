@@ -10,6 +10,7 @@ class RCallTest : public testing::Test {
     virtual void SetUp() {
         logs = new RServerLog(RServerWorkingMode::CONTAINER, std::string(""));
         core = new RCoreRuntime(logs);
+        core->initRProtectList();
     }
 
     virtual void TearDown() {

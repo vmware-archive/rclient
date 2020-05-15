@@ -84,8 +84,8 @@ ReturnStatus RCoreRuntime::init() {
         OPTIONS_NULL_CMD,
 
         /* set up the postgres error handler in R */
-        THROWRERROR_CMD,  OPTIONS_THROWRERROR_CMD, THROWNOTICE_CMD,
-        THROWERROR_CMD,   OPTIONS_THROWWARN_CMD,
+        THROWRERROR_CMD, OPTIONS_THROWRERROR_CMD, THROWNOTICE_CMD, THROWERROR_CMD,
+        OPTIONS_THROWWARN_CMD,
 
         /* terminate */
     };
@@ -122,16 +122,16 @@ what to do and will hang in the container
         this->loadRCmd(cmds[i].c_str());
     }
 
-    R_CStackLimit = (uintptr_t) - 1; /* disables R stack checking entirely */
+    R_CStackLimit = (uintptr_t)-1; /* disables R stack checking entirely */
 
-    // reset the vaule of counter
-    this->counter = 0;
+    // init protect list
+    this->initRProtectList();
 
     return ReturnStatus::OK;
 }
 
 ReturnStatus RCoreRuntime::prepare(const CallRequest *callRequest) {
-    this->rLog->log(RServerLogLevel::LOGS, "input length %ld, debug string is %s",
+    this->rLog->log(RServerLogLevel::DEBUGS, "input length %ld, debug string is %s \n",
                     callRequest->ByteSizeLong(), callRequest->DebugString().c_str());
 
     if (this->prepareRFunctionSEXP(callRequest) != ReturnStatus::OK) {
@@ -158,22 +158,24 @@ ReturnStatus RCoreRuntime::prepare(const CallRequest *callRequest) {
 ReturnStatus RCoreRuntime::execute() {
     int errorOccurred;
 
-    PROTECT(this->rFunc = lcons(this->rCode, this->rArgument));
-
-    PROTECT(this->rResults = R_tryEval(this->rFunc, R_GlobalEnv, &errorOccurred));
+    this->rFunc = lcons(this->rCode, this->rArgument);
+    R_PreserveInMSet(this->rFunc, rProtectList);
+    this->rResults = R_tryEval(this->rFunc, R_GlobalEnv, &errorOccurred);
 
     if (this->rResults != nullptr) PrintValue(this->rResults);
 
     // free this->rFunc
-    UNPROTECT_PTR(this->rFunc);
+    R_ReleaseFromMSet(this->rFunc, rProtectList);
     this->rFunc = nullptr;
 
-    UNPROTECT_PTR(this->rArgument);
+    R_ReleaseFromMSet(this->rArgument, rProtectList);
     this->rArgument = nullptr;
 
     if (errorOccurred) {
         this->rLog->log(RServerLogLevel::ERRORS, "Unable execute user code");
+        this->rResults = nullptr;
     }
+    R_PreserveInMSet(this->rResults, rProtectList);
 
     return ReturnStatus::OK;
 }
@@ -203,8 +205,6 @@ ReturnStatus RCoreRuntime::getResults(CallResponse *results) {
 
     results->set_runtimetype(this->runType);
     ret->set_type(this->returnType);
-
-    this->rLog->log(RServerLogLevel::LOGS, "return type is %d", this->returnType);
 
     switch (this->returnType) {
         case PlcDataType::LOGICAL: {
@@ -261,20 +261,16 @@ ReturnStatus RCoreRuntime::getResults(CallResponse *results) {
 void RCoreRuntime::cleanup() {
     this->rLog->log(RServerLogLevel::LOGS, "try free result sexp point");
     if (this->rResults != nullptr) {
-        UNPROTECT_PTR(this->rResults);
+        R_ReleaseFromMSet(this->rResults, rProtectList);
         this->rResults = nullptr;
     }
     this->rLog->log(RServerLogLevel::LOGS, "try free r code sexp point");
     if (this->rCode != nullptr) {
-        UNPROTECT_PTR(this->rCode);
+        R_ReleaseFromMSet(this->rCode, rProtectList);
         this->rCode = nullptr;
     }
     // also clear the subtype vector
     this->returnSubType.clear();
-
-    // increase the counter
-    this->counter++;
-    this->rLog->log(RServerLogLevel::LOGS, "finish the %d calls", this->counter);
 }
 
 std::string RCoreRuntime::getLoadSelfRefCmd() {
@@ -329,13 +325,10 @@ void RCoreRuntime::loadRCmd(const std::string &cmd) {
                 this->rLog->log(RServerLogLevel::FATALS, "Cannot process R cmd %s", cmd.c_str());
             }
         }
-        UNPROTECT_PTR(cmdSexp);
-        UNPROTECT_PTR(cmdexpr);
-    }
-    catch (std::exception &e) {
+        UNPROTECT(2);
+    } catch (std::exception &e) {
         this->rLog->log(RServerLogLevel::LOGS, "try free exception init sexp point");
-        UNPROTECT_PTR(cmdSexp);
-        UNPROTECT_PTR(cmdexpr);
+        UNPROTECT(2);
         throw e;
     }
 }
@@ -356,16 +349,20 @@ running in a container. I think -1 is equivalent to no limit.
     PROTECT(tmp = R_PARSEVECTOR(rbody, -1, &status));
 
     if (tmp != R_NilValue) {
-        PROTECT(this->rCode = VECTOR_ELT(tmp, 0));
+        this->rCode = VECTOR_ELT(tmp, 0);
+        R_PreserveInMSet(this->rCode, rProtectList);
     } else {
-        PROTECT(this->rCode = R_NilValue);
+        this->rCode = R_NilValue;
+        R_PreserveInMSet(this->rCode, rProtectList);
     }
 
     if (status != PARSE_OK) {
-        this->rLog->log(RServerLogLevel::ERRORS, "Cannot parse user code %s", code.c_str());
+        this->rLog->log(RServerLogLevel::ERRORS,
+                        "Cannot parse user code: \n %s \n, error code is %d", code.c_str(), status);
+        UNPROTECT(2);
+        return ReturnStatus::OK;
     }
-    UNPROTECT_PTR(rbody);
-    UNPROTECT_PTR(tmp);
+    UNPROTECT(2);
     return ReturnStatus::OK;
 }
 
@@ -395,7 +392,8 @@ ReturnStatus RCoreRuntime::setArgumentValues(const CallRequest *callRequest) {
     int count = 0;
 
     /* create the argument list */
-    PROTECT(this->rArgument = allargs = allocList(callRequest->args_size()));
+    this->rArgument = allargs = allocList(callRequest->args_size());
+    R_PreserveInMSet(this->rArgument, rProtectList);
 
     for (count = 0; count < callRequest->args_size(); count++) {
         PlcDataType type;
@@ -441,7 +439,7 @@ ReturnStatus RCoreRuntime::setArgumentValues(const CallRequest *callRequest) {
                 break;
             }
             default:
-                UNPROTECT(count + 1);
+                UNPROTECT(count);
                 delete convert;
                 this->rLog->log(RServerLogLevel::ERRORS, "Unsupport type in args %s",
                                 callRequest->args()[count].name().c_str());
@@ -456,6 +454,13 @@ ReturnStatus RCoreRuntime::setArgumentValues(const CallRequest *callRequest) {
     delete convert;
     return ReturnStatus::OK;
 }
+
+void RCoreRuntime::initRProtectList() {
+    this->rProtectList = R_NewPreciousMSet(5);
+    R_PreserveObject(this->rProtectList);
+}
+
+void RCoreRuntime::releaseRProtectList() { R_ReleaseObject(this->rProtectList); }
 
 void throw_pg_notice(const char **msg) {
     if (msg && *msg) last_R_notice = strdup(*msg);

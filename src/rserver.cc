@@ -4,15 +4,15 @@
  *
  *------------------------------------------------------------------------------
  */
-#include <cstdlib>
 #include <cassert>
-#include <climits>
 #include <cerrno>
+#include <climits>
+#include <cstdlib>
 #include <cstring>
 #include <exception>
 
-#include <unistd.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "rserver.hh"
 
@@ -29,7 +29,8 @@ int RServer::startServer() {
         this->udsCheck(UDS_SHARED_FILE);
     }
 
-    this->rLog->log(RServerLogLevel::LOGS, "Server is waiting for query");
+    this->rLog->log(RServerLogLevel::LOGS, "Server is waiting for query in mode %d",
+                    this->serverWorkingMode);
     server->Wait();
 
     return 0;
@@ -140,8 +141,7 @@ Status RServerRPC::singleSessionRuntime(ServerContext *context, const CallReques
         result->set_logs(this->rLog->getLogBuffer());
         this->rLog->resetLogBuffer();
         this->mtx.unlock();
-    }
-    catch (RServerFatalException &e) {
+    } catch (RServerFatalException &e) {
         Error *err = result->mutable_exception();
         Status fatalStatus = Status(grpc::StatusCode::INTERNAL, grpc::string(e.what()));
         err->set_message(e.what());
@@ -152,8 +152,7 @@ Status RServerRPC::singleSessionRuntime(ServerContext *context, const CallReques
         return fatalStatus;
 
         // TODO: clear up all/cached SEXP content
-    }
-    catch (RServerErrorException &e) {
+    } catch (RServerErrorException &e) {
         Error *err = result->mutable_exception();
         Status errorStatus = Status(grpc::StatusCode::FAILED_PRECONDITION, grpc::string(e.what()));
         err->set_message(e.what());
@@ -173,8 +172,11 @@ Status RServerRPC::multiSessionRuntime(ServerContext *context, const CallRequest
 
     try {
         log->log(RServerLogLevel::LOGS, "start to a new session");
+        this->mtx.lock();
+        runtime->initRProtectList();
         runtime->prepare(callRequest);
-        log->log(RServerLogLevel::LOGS, "start to process query");
+        this->mtx.unlock();
+        log->log(RServerLogLevel::LOGS, "start to exec query");
 
         runtime->execute();
 
@@ -186,34 +188,49 @@ Status RServerRPC::multiSessionRuntime(ServerContext *context, const CallRequest
         }
 
         runtime->getResults(result);
+        this->mtx.lock();
         runtime->cleanup();
+        runtime->releaseRProtectList();
         result->set_logs(log->getLogBuffer());
         log->resetLogBuffer();
-    }
-    catch (RServerFatalException &e) {
+        this->mtx.unlock();
+    } catch (RServerFatalException &e) {
         Error *err = result->mutable_exception();
         Status fatalStatus = Status(grpc::StatusCode::INTERNAL, grpc::string(e.what()));
         err->set_message(e.what());
         result->set_logs(log->getLogBuffer());
         log->resetLogBuffer();
         runtime->cleanup();
+        runtime->releaseRProtectList();
+        if (!this->mtx.try_lock()) {
+            this->mtx.unlock();
+        } else {
+            this->mtx.unlock();
+        }
 
         delete runtime;
+        log->log(RServerLogLevel::LOGS, "query finished, session closed with FATAL");
         delete log;
 
         return fatalStatus;
 
         // TODO: clear up all/cached SEXP content
-    }
-    catch (RServerErrorException &e) {
+    } catch (RServerErrorException &e) {
         Error *err = result->mutable_exception();
         Status errorStatus = Status(grpc::StatusCode::FAILED_PRECONDITION, grpc::string(e.what()));
         err->set_message(e.what());
         result->set_logs(this->rLog->getLogBuffer());
         log->resetLogBuffer();
         runtime->cleanup();
+        runtime->releaseRProtectList();
+        if (!this->mtx.try_lock()) {
+            this->mtx.unlock();
+        } else {
+            this->mtx.unlock();
+        }
 
         delete runtime;
+        log->log(RServerLogLevel::LOGS, "query finished, session closed with ERROR");
         delete log;
 
         return errorStatus;
@@ -221,6 +238,7 @@ Status RServerRPC::multiSessionRuntime(ServerContext *context, const CallRequest
 
     // clean the R runtime session
     delete runtime;
+    log->log(RServerLogLevel::LOGS, "query finished, session closed");
     delete log;
 
     return Status::OK;
@@ -232,8 +250,10 @@ Status RServerRPC::FunctionCall(ServerContext *context, const CallRequest *callR
         // Currently only PL4K related mode need multiple session support
         case RServerWorkingMode::PL4K:
         case RServerWorkingMode::PL4KDEBUG:
+            this->rLog->log(RServerLogLevel::LOGS, "MultiSession runtime config");
             return this->multiSessionRuntime(context, callRequest, result);
         default:
+            this->rLog->log(RServerLogLevel::LOGS, "singleSession runtime config");
             return this->singleSessionRuntime(context, callRequest, result);
     }
 }
