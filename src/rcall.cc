@@ -357,8 +357,8 @@ running in a container. I think -1 is equivalent to no limit.
     }
 
     if (status != PARSE_OK) {
-        this->rLog->log(RServerLogLevel::ERRORS,
-                        "Cannot parse user code: \n %s \n, error code is %d", code.c_str(), status);
+        // TODO: Update error message
+        this->rLog->log(RServerLogLevel::ERRORS, "Cannot parse user code %s", code.c_str());
         UNPROTECT(2);
         return ReturnStatus::OK;
     }
