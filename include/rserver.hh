@@ -5,13 +5,13 @@
 
 #include <grpc/grpc.h>
 #include <grpc/status.h>
+#include <grpcpp/security/server_credentials.h>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 #include <grpcpp/server_context.h>
-#include <grpcpp/security/server_credentials.h>
 
-#include "rutils.hh"
 #include "rcall.hh"
+#include "rutils.hh"
 
 #include "plcontainer.grpc.pb.h"
 #include "plcontainer.pb.h"
@@ -35,6 +35,7 @@ class RServerRPC final : public PLContainer::Service {
         this->runtime = nullptr;
         this->rLog = rLog;
         this->serverWorkingMode = mode;
+        // this->numberOfSession = 0; reserved for next step
     }
 
     virtual void initRCore();
@@ -57,6 +58,7 @@ class RServerRPC final : public PLContainer::Service {
     PlcRuntime *runtime;
     RServerLog *rLog;
     std::mutex mtx;
+    // int64_t numberOfSession; reserved for next step
     RServerWorkingMode serverWorkingMode;
 };
 
@@ -76,9 +78,7 @@ class RServer {
 
     void setLogger(RServerLog *log) { this->rLog = log; }
 
-    virtual ~RServer() {
-        delete server;
-    };
+    virtual ~RServer() { delete server; };
 
    private:
     RServerWorkingMode serverWorkingMode;

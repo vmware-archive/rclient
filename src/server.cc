@@ -25,7 +25,6 @@ int main(int argc, char **argv) {
             server = new RServer(RServerWorkingMode::CONTAINER, log);
             server->initServer();
         } else {
-
             std::string mode = std::string(argv[1]);
 
             if (mode.compare("1") == 0) {
@@ -70,8 +69,7 @@ int main(int argc, char **argv) {
         }
 
         server->startServer();
-    }
-    catch (std::exception &e) {
+    } catch (std::exception &e) {
         if (log != nullptr) {
             log->log(RServerLogLevel::LOGS, "Unexpected R server runtime exception, exit now!");
         }

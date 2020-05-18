@@ -1,12 +1,12 @@
 #ifndef _RUTILS_H
 #define _RUTILS_H
 
-#include <string>
-#include <cstdio>
 #include <cstdarg>
+#include <cstdio>
 #include <cstdlib>
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <string>
 
 /* R header files */
 #include <R.h>
@@ -55,9 +55,7 @@ class RServerFatalException : public std::exception {
 
 class RServerErrorException : public std::exception {
    public:
-    RServerErrorException() {
-        this->msg = "R Server Runtime Warning ";
-    };
+    RServerErrorException() { this->msg = "R Server Runtime Warning "; };
     RServerErrorException(std::string &msg) { this->msg = "R Server Runtime Warning " + msg + " "; }
 
     virtual const char *what() const noexcept override { return this->msg.c_str(); }
@@ -69,7 +67,7 @@ class RServerErrorException : public std::exception {
 class LogPrinter {
    public:
     virtual void print(std::string &logs) = 0;
-    virtual ~LogPrinter() {};
+    virtual ~LogPrinter(){};
 };
 
 class FileLogPrinter : public LogPrinter {
