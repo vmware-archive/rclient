@@ -923,17 +923,17 @@ receive:
 		 * create a vector of the type that is rows long
 		 * For type BYTEA, we process it as TEXT
 		 */
-		if (result->types[0].type == PLC_DATA_BYTEA) {
+		if (result->types[j].type == PLC_DATA_BYTEA) {
 			PROTECT(fldvec = get_r_vector(PLC_DATA_TEXT, result->rows));
 		} else {
-			PROTECT(fldvec = get_r_vector(result->types[0].type, result->rows));
+			PROTECT(fldvec = get_r_vector(result->types[j].type, result->rows));
 		}
 
 		for (i = 0; i < result->rows; i++) {
 			/*
 			 * store the value
 			 */
-			pg_get_one_r(result->data[i][j].value, result->types[0].type, &fldvec, i);
+			pg_get_one_r(result->data[i][j].value, result->types[j].type, &fldvec, i);
 		}
 
 		UNPROTECT(1);
