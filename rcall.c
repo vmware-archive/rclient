@@ -103,6 +103,11 @@
 #define PG_LOG_FATAL_CMD \
 		"plr.fatal <- function(msg) {.Call(\"plr_fatal\",msg)}"
 
+// init variable
+plcConn *plcconn_global;
+
+int plc_is_execution_terminated;
+
 /* R interface */
 void throw_pg_notice(const char **msg);
 
@@ -143,7 +148,7 @@ static SEXP process_SPI_results();
 int R_SignalHandlers = 1;
 
 /* set by hook throw_r_error */
-char *last_R_error_msg,
+static char *last_R_error_msg,
 	*last_R_notice;
 
 /* Global PL/Container connection */

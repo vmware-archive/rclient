@@ -60,7 +60,7 @@ static plcRInputFunc plc_get_input_function(plcDatatype dt, bool isArrayElement)
 
 static void plc_parse_type(plcRType *Rtype, plcType *type, char *argName, bool isArrayElement);
 
-char *last_R_error_msg = NULL;
+static char *last_R_error_msg = NULL;
 
 /*
  *
