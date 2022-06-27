@@ -1,3 +1,5 @@
+This repository has been archived. The future development happens in https://github.com/greenplum-db/plcontainer/tree/6X_STABLE/src/rclient .
+
 Used by pl/container to implement the Remote Procedure calls from Pl/container https://github.com/greenplum-db/plcontainer
 
 Pl/Container is a procedural language for Greenplum/PostgreSQL which allows for untrusted languages to be sandboxed
